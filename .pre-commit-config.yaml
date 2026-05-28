@@ -1,0 +1,16 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-format
+        name: ruff format (python)
+        language: system
+        entry: uv run ruff format backend/
+        files: ^backend/.*\.py$
+        pass_filenames: false
+
+      - id: biome-check
+        name: biome check (typescript)
+        language: system
+        entry: bash -c 'cd frontend && bun run lint'
+        files: ^frontend/src/.*\.(ts|tsx)$
+        pass_filenames: false

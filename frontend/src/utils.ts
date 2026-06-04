@@ -1,5 +1,8 @@
 import { AxiosError } from "axios"
-import type { ApiError } from "./client"
+
+type ApiError = {
+  body?: { detail?: string | Array<{ msg: string }> }
+}
 
 function extractErrorMessage(err: ApiError): string {
   if (err instanceof AxiosError) {

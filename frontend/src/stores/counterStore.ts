@@ -1,4 +1,4 @@
-import { create } from 'zustand'
+import { create } from "zustand"
 
 /**
  * A POC Zustand state store for counter. 
@@ -20,9 +20,9 @@ type CounterStore = {
   inc: () => void
 }
 
- const useCounterStore = create<CounterStore>()((set) => ({
+const useCounterStore = create<CounterStore>()((set) => ({
   count: 1,
   inc: () => set((state) => ({ count: state.count + 1 })),
 }))
 
-export default useCounterStore;
+export default useCounterStore

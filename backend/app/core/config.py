@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     )
     API_V1_STR: str = "/api/v1"
     PROJECT_NAME: str = "App"
+    SECRET_KEY: str
+
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     BACKEND_CORS_ORIGINS: Annotated[
         list[AnyUrl] | str, BeforeValidator(parse_cors)
@@ -47,6 +51,9 @@ class Settings(BaseSettings):
             port=self.POSTGRES_PORT,
             path=self.POSTGRES_DB,
         )
+
+    FIRST_SUPERUSER: str
+    FIRST_SUPERUSER_PASSWORD: str
 
 
 settings = Settings()  # type: ignore

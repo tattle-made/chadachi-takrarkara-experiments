@@ -1,6 +1,6 @@
 from enum import Enum
 
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, Relationship, SQLModel
 
 
 class UserRole(str, Enum):
@@ -18,6 +18,8 @@ class UserBase(SQLModel):
 class User(UserBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
     hashed_password: str
+
+    conversations: list["Conversation"] = Relationship(back_populates="user")
 
 
 class UserCreate(UserBase):

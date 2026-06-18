@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as EmailGenerationRouteImport } from './routes/emailGeneration'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LayoutAdminIndexRouteImport } from './routes/_layout/admin/index'
@@ -17,6 +18,11 @@ import { Route as LayoutAdminIndexRouteImport } from './routes/_layout/admin/ind
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmailGenerationRoute = EmailGenerationRouteImport.update({
+  id: '/emailGeneration',
+  path: '/emailGeneration',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LayoutRoute = LayoutRouteImport.update({
@@ -36,11 +42,13 @@ const LayoutAdminIndexRoute = LayoutAdminIndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/emailGeneration': typeof EmailGenerationRoute
   '/login': typeof LoginRoute
   '/admin/': typeof LayoutAdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/emailGeneration': typeof EmailGenerationRoute
   '/login': typeof LoginRoute
   '/admin': typeof LayoutAdminIndexRoute
 }
@@ -48,20 +56,28 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_layout': typeof LayoutRouteWithChildren
+  '/emailGeneration': typeof EmailGenerationRoute
   '/login': typeof LoginRoute
   '/_layout/admin/': typeof LayoutAdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/admin/'
+  fullPaths: '/' | '/emailGeneration' | '/login' | '/admin/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/admin'
-  id: '__root__' | '/' | '/_layout' | '/login' | '/_layout/admin/'
+  to: '/' | '/emailGeneration' | '/login' | '/admin'
+  id:
+    | '__root__'
+    | '/'
+    | '/_layout'
+    | '/emailGeneration'
+    | '/login'
+    | '/_layout/admin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LayoutRoute: typeof LayoutRouteWithChildren
+  EmailGenerationRoute: typeof EmailGenerationRoute
   LoginRoute: typeof LoginRoute
 }
 
@@ -72,6 +88,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/emailGeneration': {
+      id: '/emailGeneration'
+      path: '/emailGeneration'
+      fullPath: '/emailGeneration'
+      preLoaderRoute: typeof EmailGenerationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_layout': {
@@ -112,6 +135,7 @@ const LayoutRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LayoutRoute: LayoutRouteWithChildren,
+  EmailGenerationRoute: EmailGenerationRoute,
   LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport

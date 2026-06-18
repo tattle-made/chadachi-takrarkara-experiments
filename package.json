@@ -11,6 +11,7 @@
     "test:ui": "bun run --filter frontend test:ui"
   },
   "dependencies": {
+    "react-text-annotate": "^0.3.0",
     "zustand": "^5.0.14"
   }
 }

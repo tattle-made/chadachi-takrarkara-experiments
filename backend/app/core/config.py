@@ -55,5 +55,8 @@ class Settings(BaseSettings):
     FIRST_SUPERUSER: str
     FIRST_SUPERUSER_PASSWORD: str
 
+    OPENAI_API_KEY: str
+    OPENAI_VECTOR_STORE_ID: str
+
 
 settings = Settings()  # type: ignore

@@ -6,9 +6,18 @@ from app.models.conversation import (  # noqa: F401
     ConversationPublic,
 )
 from app.models.enums import (  # noqa: F401
+    AnnotationTag,
     FunctionalityType,
     MessageKind,
     MessageStatus,
+)
+from app.models.feedback import (  # noqa: F401
+    AnnotationSpan,
+    AnnotationSpanCreate,
+    AnnotationSpanPublic,
+    Feedback,
+    FeedbackCreate,
+    FeedbackPublic,
 )
 from app.models.message import (  # noqa: F401
     Message,

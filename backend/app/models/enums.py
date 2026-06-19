@@ -16,3 +16,12 @@ class MessageStatus(str, Enum):
     completed = "completed"
     error = "error"
     streaming = "streaming"
+
+
+class AnnotationTag(str, Enum):
+    hallucination = "hallucination"
+    personal_information = "personal-information"
+    too_verbose = "too-verbose"
+    high_priority = "high-priority"
+    low_priority = "low-priority"
+    others = "others"

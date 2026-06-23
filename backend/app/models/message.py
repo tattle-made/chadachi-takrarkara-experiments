@@ -1,12 +1,15 @@
 import uuid
 from datetime import datetime, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import sqlalchemy as sa
 from sqlmodel import Column, Field, JSON, Relationship, SQLModel
 
 from app.models.conversation import Conversation
 from app.models.enums import FunctionalityType, MessageKind, MessageStatus
+
+if TYPE_CHECKING:
+    from app.models.feedback import Feedback
 
 
 class MessageBase(SQLModel):
@@ -42,6 +45,7 @@ class Message(MessageBase, table=True):
     )
 
     conversation: Conversation = Relationship(back_populates="messages")
+    feedback: list["Feedback"] = Relationship(back_populates="message")
 
 
 class MessageCreate(MessageBase):

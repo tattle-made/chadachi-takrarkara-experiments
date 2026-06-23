@@ -1,10 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as Dialog from "@radix-ui/react-dialog"
 import { useQuery } from "@tanstack/react-query"
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, redirect } from "@tanstack/react-router"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
+import apiClient from "@/lib/apiClient"
 import {
   useArchiveUserMutation,
   useCreateUserMutation,
@@ -13,7 +14,18 @@ import {
 } from "@/queries/users.query"
 import type { User } from "@/types/user.type"
 
-export const Route = createFileRoute("/_layout/admin/")({
+export const Route = createFileRoute("/_userLayout/admin/")({
+  beforeLoad: async () => {
+    try {
+      const response = await apiClient.get("/api/v1/users/me")
+      if (response.data.role !== "admin") {
+        throw redirect({ to: "/" })
+      }
+    } catch (err) {
+      if (err instanceof Error && "isRedirect" in err) throw err
+      throw redirect({ to: "/" })
+    }
+  },
   component: AdminUsersPage,
 })
 
@@ -92,7 +104,6 @@ function AdminUsersPage() {
             )}
           </div>
 
-          {/* Add user dialog */}
           <Dialog.Root open={addOpen} onOpenChange={handleAddOpenChange}>
             <Dialog.Trigger asChild>
               <button

@@ -1,6 +1,10 @@
 from enum import Enum
+from typing import TYPE_CHECKING
 
 from sqlmodel import Field, Relationship, SQLModel
+
+if TYPE_CHECKING:
+    from app.models.feedback import Feedback
 
 
 class UserRole(str, Enum):
@@ -20,6 +24,7 @@ class User(UserBase, table=True):
     hashed_password: str
 
     conversations: list["Conversation"] = Relationship(back_populates="user")
+    feedback: list["Feedback"] = Relationship(back_populates="user")
 
 
 class UserCreate(UserBase):

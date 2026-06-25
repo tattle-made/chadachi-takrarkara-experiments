@@ -1,6 +1,20 @@
-from sqlmodel import Session
+from sqlalchemy.orm import selectinload
+from sqlmodel import Session, select
 
 from app.models.feedback import AnnotationSpan, Feedback, FeedbackCreate
+
+
+def get_all_feedback_for_export(*, session: Session) -> list[Feedback]:
+    statement = (
+        select(Feedback)
+        .options(
+            selectinload(Feedback.user),
+            selectinload(Feedback.spans),
+            selectinload(Feedback.message),
+        )  # type: ignore[arg-type]
+        .order_by(Feedback.created_at)
+    )
+    return list(session.exec(statement).all())
 
 
 def create_feedback(*, session: Session, feedback_in: FeedbackCreate) -> Feedback:

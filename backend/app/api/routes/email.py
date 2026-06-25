@@ -1,13 +1,17 @@
+import csv
+import io
 import logging
 import time
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
+from sqlmodel import select
 
 logger = logging.getLogger(__name__)
 from openai import OpenAI
 
 from app import crud
-from app.api.deps import CurrentUserDep, SessionDep
+from app.api.deps import AdminDep, CurrentUserDep, SessionDep
 from app.core.config import settings
 from app.models import (
     AnnotationTag,
@@ -142,6 +146,75 @@ def generate_email(
         email=email_text,
         conversation_id=conversation.id,
         message_id=llm_message.id,
+    )
+
+
+@router.get("/feedback/export")
+def export_feedback_csv(
+    session: SessionDep,
+    _: AdminDep,
+) -> StreamingResponse:
+    feedbacks = crud.get_all_feedback_for_export(session=session)
+
+    conv_ids = {fb.message.conversation_id for fb in feedbacks}
+    user_queries: dict = {}
+    if conv_ids:
+        rows = session.exec(
+            select(Message).where(
+                Message.conversation_id.in_(conv_ids),  # type: ignore[arg-type]
+                Message.kind == MessageKind.user_query,
+            )
+        ).all()
+        for msg in rows:
+            user_queries[msg.conversation_id] = msg.body
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(
+        [
+            "feedback_id",
+            "created_at",
+            "user_email",
+            "message_id",
+            "user_query",
+            "text_snapshot",
+            "comment",
+            "span_start",
+            "span_end",
+            "highlighted_text",
+            "tag",
+        ]
+    )
+
+    for fb in feedbacks:
+        base = [
+            str(fb.id),
+            fb.created_at.isoformat(),
+            fb.user.email,
+            str(fb.message_id),
+            user_queries.get(fb.message.conversation_id, ""),
+            fb.text_snapshot,
+            fb.comment or "",
+        ]
+        if fb.spans:
+            for span in fb.spans:
+                writer.writerow(
+                    base
+                    + [
+                        span.start_offset,
+                        span.end_offset,
+                        span.highlighted_text,
+                        span.tag,
+                    ]
+                )
+        else:
+            writer.writerow(base + ["", "", "", ""])
+
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=feedback_export.csv"},
     )
 
 

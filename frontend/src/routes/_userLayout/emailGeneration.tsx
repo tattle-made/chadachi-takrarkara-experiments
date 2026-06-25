@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
+import { isAxiosError } from "axios"
 import { Loader2, Send, WandSparkles } from "lucide-react"
 import { type FormEvent, useState } from "react"
 import { TextAnnotator } from "react-text-annotate"
@@ -14,7 +15,6 @@ const TAGS = [
   "too-verbose",
   "high-priority",
   "low-priority",
-  "others",
 ] as const
 
 type Tag = (typeof TAGS)[number]
@@ -34,7 +34,6 @@ const tagColors: Record<Tag, string> = {
   "too-verbose": "#26de81",
   "high-priority": "#45aaf2",
   "low-priority": "#a55eea",
-  others: "#94a3b8",
 }
 
 const tagLabels: Record<Tag, string> = {
@@ -43,7 +42,6 @@ const tagLabels: Record<Tag, string> = {
   "too-verbose": "Too verbose",
   "high-priority": "High priority",
   "low-priority": "Low priority",
-  others: "Others",
 }
 
 function EmailGeneration() {
@@ -56,6 +54,8 @@ function EmailGeneration() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
+  const [hasSubmittedOnce, setHasSubmittedOnce] = useState(false)
+  const [isDirty, setIsDirty] = useState(true)
   const [generateError, setGenerateError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
@@ -69,7 +69,10 @@ function EmailGeneration() {
     setCustomComment("")
     setMessageId(null)
     setFeedbackSubmitted(false)
+    setHasSubmittedOnce(false)
+    setIsDirty(true)
     setGenerateError(null)
+    setSubmitError(null)
 
     try {
       const response = await apiClient.post<{
@@ -80,8 +83,14 @@ function EmailGeneration() {
 
       setGeneratedEmail(response.data.email)
       setMessageId(response.data.message_id)
-    } catch {
-      setGenerateError("Email generation failed. Please try again.")
+    } catch (error) {
+      if (isAxiosError(error) && !error.response) {
+        setGenerateError(
+          "Unable to reach the server — check your connection and try again.",
+        )
+      } else {
+        setGenerateError("Email generation failed. Please try again.")
+      }
     } finally {
       setIsGenerating(false)
     }
@@ -108,8 +117,18 @@ function EmailGeneration() {
         custom_comment: customComment || null,
       })
       setFeedbackSubmitted(true)
-    } catch {
-      setSubmitError("Failed to submit feedback. Please try again.")
+      setHasSubmittedOnce(true)
+      setIsDirty(false)
+    } catch (error) {
+      if (isAxiosError(error) && !error.response) {
+        setSubmitError(
+          "Unable to reach the server — check your connection and try again.",
+        )
+      } else if (isAxiosError(error) && error.response?.status === 401) {
+        setSubmitError("Your session has expired. Please log in again.")
+      } else {
+        setSubmitError("Failed to submit feedback. Please try again.")
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -175,6 +194,7 @@ function EmailGeneration() {
                   onChange={(newValue) => {
                     setAnnotations(newValue as AnnotationSpan[])
                     setFeedbackSubmitted(false)
+                    setIsDirty(true)
                     setSubmitError(null)
                   }}
                   style={{ whiteSpace: "pre-wrap" }}
@@ -232,6 +252,7 @@ function EmailGeneration() {
               onChange={(event) => {
                 setCustomComment(event.target.value)
                 setFeedbackSubmitted(false)
+                setIsDirty(true)
                 setSubmitError(null)
               }}
               placeholder="Add any extra feedback for the generated email..."
@@ -242,11 +263,15 @@ function EmailGeneration() {
           <div className="flex items-center gap-4">
             <button
               className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-4 text-sm font-medium text-white hover:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:ring-offset-2 disabled:opacity-50"
-              disabled={isSubmitting || feedbackSubmitted}
+              disabled={isSubmitting || !isDirty}
               type="submit"
             >
               <Send className="size-4" />
-              {isSubmitting ? "Submitting…" : "Submit feedback"}
+              {isSubmitting
+                ? "Submitting…"
+                : hasSubmittedOnce
+                  ? "Update feedback"
+                  : "Submit feedback"}
             </button>
             {feedbackSubmitted && (
               <p className="text-sm text-teal-700">Feedback submitted.</p>

@@ -46,6 +46,26 @@ const ROLE_BADGE: Record<string, string> = {
 function AdminUsersPage() {
   const [addOpen, setAddOpen] = useState(false)
   const [archiveTarget, setArchiveTarget] = useState<User | null>(null)
+  const [isExporting, setIsExporting] = useState(false)
+
+  const handleExportCsv = async () => {
+    setIsExporting(true)
+    try {
+      const response = await apiClient.get("/api/v1/email/feedback/export", {
+        responseType: "blob",
+      })
+      const url = URL.createObjectURL(
+        new Blob([response.data], { type: "text/csv" }),
+      )
+      const link = document.createElement("a")
+      link.href = url
+      link.download = "feedback_export.csv"
+      link.click()
+      URL.revokeObjectURL(url)
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   const { data, isLoading } = useQuery(usersQueryOptions())
   const {
@@ -104,113 +124,124 @@ function AdminUsersPage() {
             )}
           </div>
 
-          <Dialog.Root open={addOpen} onOpenChange={handleAddOpenChange}>
-            <Dialog.Trigger asChild>
-              <button
-                type="button"
-                className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
-              >
-                Add user
-              </button>
-            </Dialog.Trigger>
-            <Dialog.Portal>
-              <Dialog.Overlay className="fixed inset-0 bg-black/30" />
-              <Dialog.Content className="fixed left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg bg-white p-6 shadow-xl">
-                <Dialog.Title className="mb-4 text-lg font-semibold text-slate-900">
-                  Add user
-                </Dialog.Title>
-                <form
-                  onSubmit={handleSubmit(onCreateSubmit)}
-                  className="space-y-4"
-                  noValidate
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              disabled={isExporting}
+              className="rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            >
+              {isExporting ? "Exporting…" : "Export feedback CSV"}
+            </button>
+
+            <Dialog.Root open={addOpen} onOpenChange={handleAddOpenChange}>
+              <Dialog.Trigger asChild>
+                <button
+                  type="button"
+                  className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
                 >
-                  <div>
-                    <label
-                      htmlFor="email"
-                      className="block text-sm font-medium text-slate-700"
-                    >
-                      Email
-                    </label>
-                    <input
-                      id="email"
-                      type="email"
-                      autoComplete="off"
-                      {...register("email")}
-                      className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
-                      placeholder="user@example.com"
-                    />
-                    {errors.email && (
-                      <p className="mt-1 text-xs text-red-600">
-                        {errors.email.message}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="password"
-                      className="block text-sm font-medium text-slate-700"
-                    >
-                      Password
-                    </label>
-                    <input
-                      id="password"
-                      type="password"
-                      autoComplete="new-password"
-                      {...register("password")}
-                      className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
-                      placeholder="••••••••"
-                    />
-                    {errors.password && (
-                      <p className="mt-1 text-xs text-red-600">
-                        {errors.password.message}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="role"
-                      className="block text-sm font-medium text-slate-700"
-                    >
-                      Role
-                    </label>
-                    <select
-                      id="role"
-                      {...register("role")}
-                      className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
-                    >
-                      <option value="member">Member</option>
-                      <option value="manager">Manager</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                  </div>
-                  {createError && (
-                    <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-                      {createError instanceof Error
-                        ? createError.message
-                        : "Failed to create user"}
-                    </p>
-                  )}
-                  <div className="flex justify-end gap-3 pt-2">
-                    <Dialog.Close asChild>
-                      <button
-                        type="button"
-                        className="rounded-md border border-slate-200 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                  Add user
+                </button>
+              </Dialog.Trigger>
+              <Dialog.Portal>
+                <Dialog.Overlay className="fixed inset-0 bg-black/30" />
+                <Dialog.Content className="fixed left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg bg-white p-6 shadow-xl">
+                  <Dialog.Title className="mb-4 text-lg font-semibold text-slate-900">
+                    Add user
+                  </Dialog.Title>
+                  <form
+                    onSubmit={handleSubmit(onCreateSubmit)}
+                    className="space-y-4"
+                    noValidate
+                  >
+                    <div>
+                      <label
+                        htmlFor="email"
+                        className="block text-sm font-medium text-slate-700"
                       >
-                        Cancel
+                        Email
+                      </label>
+                      <input
+                        id="email"
+                        type="email"
+                        autoComplete="off"
+                        {...register("email")}
+                        className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
+                        placeholder="user@example.com"
+                      />
+                      {errors.email && (
+                        <p className="mt-1 text-xs text-red-600">
+                          {errors.email.message}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="password"
+                        className="block text-sm font-medium text-slate-700"
+                      >
+                        Password
+                      </label>
+                      <input
+                        id="password"
+                        type="password"
+                        autoComplete="new-password"
+                        {...register("password")}
+                        className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
+                        placeholder="••••••••"
+                      />
+                      {errors.password && (
+                        <p className="mt-1 text-xs text-red-600">
+                          {errors.password.message}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="role"
+                        className="block text-sm font-medium text-slate-700"
+                      >
+                        Role
+                      </label>
+                      <select
+                        id="role"
+                        {...register("role")}
+                        className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
+                      >
+                        <option value="member">Member</option>
+                        <option value="manager">Manager</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
+                    {createError && (
+                      <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+                        {createError instanceof Error
+                          ? createError.message
+                          : "Failed to create user"}
+                      </p>
+                    )}
+                    <div className="flex justify-end gap-3 pt-2">
+                      <Dialog.Close asChild>
+                        <button
+                          type="button"
+                          className="rounded-md border border-slate-200 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                        >
+                          Cancel
+                        </button>
+                      </Dialog.Close>
+                      <button
+                        type="submit"
+                        disabled={isCreating}
+                        className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
+                      >
+                        {isCreating ? "Adding…" : "Add user"}
                       </button>
-                    </Dialog.Close>
-                    <button
-                      type="submit"
-                      disabled={isCreating}
-                      className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
-                    >
-                      {isCreating ? "Adding…" : "Add user"}
-                    </button>
-                  </div>
-                </form>
-              </Dialog.Content>
-            </Dialog.Portal>
-          </Dialog.Root>
+                    </div>
+                  </form>
+                </Dialog.Content>
+              </Dialog.Portal>
+            </Dialog.Root>
+          </div>
         </div>
 
         {isLoading ? (

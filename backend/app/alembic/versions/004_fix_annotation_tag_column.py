@@ -35,7 +35,7 @@ def downgrade():
         """
         CREATE TYPE annotationtag AS ENUM (
             'hallucination', 'personal-information', 'too-verbose',
-            'high-priority', 'low-priority', 'others'
+            'high-priority', 'low-priority'
         )
         """
     )
@@ -48,7 +48,6 @@ def downgrade():
             "too-verbose",
             "high-priority",
             "low-priority",
-            "others",
             name="annotationtag",
         ),
         postgresql_using="tag::annotationtag",

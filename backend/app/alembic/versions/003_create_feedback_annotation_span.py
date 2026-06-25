@@ -47,7 +47,6 @@ def upgrade():
                 "too-verbose",
                 "high-priority",
                 "low-priority",
-                "others",
                 name="annotationtag",
             ),
             nullable=False,

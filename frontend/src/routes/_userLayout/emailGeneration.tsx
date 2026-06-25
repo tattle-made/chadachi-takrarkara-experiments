@@ -15,7 +15,6 @@ const TAGS = [
   "too-verbose",
   "high-priority",
   "low-priority",
-  "others",
 ] as const
 
 type Tag = (typeof TAGS)[number]
@@ -35,7 +34,6 @@ const tagColors: Record<Tag, string> = {
   "too-verbose": "#26de81",
   "high-priority": "#45aaf2",
   "low-priority": "#a55eea",
-  others: "#94a3b8",
 }
 
 const tagLabels: Record<Tag, string> = {
@@ -44,7 +42,6 @@ const tagLabels: Record<Tag, string> = {
   "too-verbose": "Too verbose",
   "high-priority": "High priority",
   "low-priority": "Low priority",
-  others: "Others",
 }
 
 function EmailGeneration() {

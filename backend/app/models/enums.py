@@ -24,4 +24,3 @@ class AnnotationTag(str, Enum):
     too_verbose = "too-verbose"
     high_priority = "high-priority"
     low_priority = "low-priority"
-    others = "others"

@@ -1,3 +1,22 @@
+# -----------------------------
+# Frontend build
+# -----------------------------
+FROM oven/bun:1 AS frontend-builder
+
+WORKDIR /app
+
+COPY package.json bun.lock ./
+COPY frontend/package.json frontend/
+RUN bun install
+
+COPY frontend ./frontend
+
+RUN bun run --filter frontend build
+
+
+# -----------------------------
+# Backend
+# -----------------------------
 FROM python:3.10
 
 ENV PYTHONUNBUFFERED=1
@@ -32,6 +51,8 @@ COPY ./backend/scripts /app/backend/scripts
 COPY ./backend/pyproject.toml ./backend/alembic.ini /app/backend/
 
 COPY ./backend/app /app/backend/app
+
+COPY --from=frontend-builder /app/frontend/dist /app/backend/dist
 
 # Sync the project
 # Ref: https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers

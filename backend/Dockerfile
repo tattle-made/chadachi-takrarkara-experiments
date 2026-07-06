@@ -5,6 +5,10 @@ FROM oven/bun:1 AS frontend-builder
 
 WORKDIR /app
 
+# Empty by default so production calls the FastAPI app on the same origin.
+ARG VITE_API_URL=""
+ENV VITE_API_URL=${VITE_API_URL}
+
 COPY package.json bun.lock ./
 COPY frontend/package.json frontend/
 RUN bun install

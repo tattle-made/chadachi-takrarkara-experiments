@@ -12,7 +12,9 @@ WORKDIR /app/frontend
 RUN bun install
 
 COPY ./frontend /app/frontend
-ARG VITE_API_URL
+# Empty by default so production calls the backend on the same origin.
+ARG VITE_API_URL=""
+ENV VITE_API_URL=${VITE_API_URL}
 
 RUN bun run build
 

@@ -1,7 +1,8 @@
 import axios, { type InternalAxiosRequestConfig } from "axios"
 import useAuthStore from "@/stores/authStore"
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000"
+const DEFAULT_BASE_URL = import.meta.env.DEV ? "http://localhost:8000" : ""
+const BASE_URL = import.meta.env.VITE_API_URL || DEFAULT_BASE_URL
 const AUTH_PATH_PREFIX = "/api/v1/auth/"
 
 const apiClient = axios.create({

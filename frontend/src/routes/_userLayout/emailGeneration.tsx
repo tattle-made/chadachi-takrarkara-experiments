@@ -28,6 +28,10 @@ type AnnotationSpan = {
   color: string
 }
 
+type FeedbackResponse = {
+  feedback_id: string
+}
+
 const tagColors: Record<Tag, string> = {
   hallucination: "#ef476f",
   "personal-information": "#f7b731",
@@ -54,10 +58,27 @@ function EmailGeneration() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
+  const [feedbackSuccessMessage, setFeedbackSuccessMessage] = useState<
+    string | null
+  >(null)
   const [hasSubmittedOnce, setHasSubmittedOnce] = useState(false)
   const [isDirty, setIsDirty] = useState(true)
   const [generateError, setGenerateError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [feedbackId, setFeedbackId] = useState<string | null>(null)
+  const trimmedCustomComment = customComment.trim()
+  const hasFeedbackContent =
+    annotations.length > 0 || trimmedCustomComment.length > 0
+
+  const getFeedbackPayload = () => ({
+    annotations: annotations.map(({ start, end, text, label }) => ({
+      start,
+      end,
+      text,
+      tag: label,
+    })),
+    custom_comment: trimmedCustomComment || null,
+  })
 
   const handleGenerateEmail = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -69,10 +90,12 @@ function EmailGeneration() {
     setCustomComment("")
     setMessageId(null)
     setFeedbackSubmitted(false)
+    setFeedbackSuccessMessage(null)
     setHasSubmittedOnce(false)
     setIsDirty(true)
     setGenerateError(null)
     setSubmitError(null)
+    setFeedbackId(null)
 
     try {
       const response = await apiClient.post<{
@@ -102,23 +125,23 @@ function EmailGeneration() {
       setSubmitError("No email generated yet — please generate an email first.")
       return
     }
+    if (!hasFeedbackContent) return
 
     setIsSubmitting(true)
     setSubmitError(null)
     try {
-      await apiClient.post("/api/v1/email/feedback", {
-        message_id: messageId,
-        annotations: annotations.map(({ start, end, text, label }) => ({
-          start,
-          end,
-          text,
-          tag: label,
-        })),
-        custom_comment: customComment || null,
-      })
+      const response = await apiClient.post<FeedbackResponse>(
+        "/api/v1/email/feedback",
+        {
+          message_id: messageId,
+          ...getFeedbackPayload(),
+        },
+      )
       setFeedbackSubmitted(true)
+      setFeedbackSuccessMessage("Feedback submitted.")
       setHasSubmittedOnce(true)
       setIsDirty(false)
+      setFeedbackId(response.data.feedback_id)
     } catch (error) {
       if (isAxiosError(error) && !error.response) {
         setSubmitError(
@@ -128,6 +151,45 @@ function EmailGeneration() {
         setSubmitError("Your session has expired. Please log in again.")
       } else {
         setSubmitError("Failed to submit feedback. Please try again.")
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleUpdateFeedback = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!feedbackId) {
+      setSubmitError("No feedback found yet — please submit feedback first.")
+      return
+    }
+    if (!hasFeedbackContent) return
+
+    setIsSubmitting(true)
+    setSubmitError(null)
+    try {
+      const response = await apiClient.put<FeedbackResponse>(
+        `/api/v1/email/feedback/${feedbackId}`,
+        getFeedbackPayload(),
+      )
+      setFeedbackSubmitted(true)
+      setFeedbackSuccessMessage("Feedback updated.")
+      setHasSubmittedOnce(true)
+      setIsDirty(false)
+      setFeedbackId(response.data.feedback_id)
+    } catch (error) {
+      if (isAxiosError(error) && !error.response) {
+        setSubmitError(
+          "Unable to reach the server — check your connection and try again.",
+        )
+      } else if (isAxiosError(error) && error.response?.status === 401) {
+        setSubmitError("Your session has expired. Please log in again.")
+      } else if (isAxiosError(error) && error.response?.status === 404) {
+        setSubmitError("Feedback was not found. Please submit it again.")
+        setFeedbackId(null)
+        setHasSubmittedOnce(false)
+      } else {
+        setSubmitError("Failed to update feedback. Please try again.")
       }
     } finally {
       setIsSubmitting(false)
@@ -176,7 +238,10 @@ function EmailGeneration() {
       </form>
 
       {generatedEmail && (
-        <form className="space-y-4" onSubmit={handleSubmitFeedback}>
+        <form
+          className="space-y-4"
+          onSubmit={feedbackId ? handleUpdateFeedback : handleSubmitFeedback}
+        >
           <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_260px]">
             <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
               <h1 className="text-base font-semibold text-slate-900">
@@ -194,6 +259,7 @@ function EmailGeneration() {
                   onChange={(newValue) => {
                     setAnnotations(newValue as AnnotationSpan[])
                     setFeedbackSubmitted(false)
+                    setFeedbackSuccessMessage(null)
                     setIsDirty(true)
                     setSubmitError(null)
                   }}
@@ -252,6 +318,7 @@ function EmailGeneration() {
               onChange={(event) => {
                 setCustomComment(event.target.value)
                 setFeedbackSubmitted(false)
+                setFeedbackSuccessMessage(null)
                 setIsDirty(true)
                 setSubmitError(null)
               }}
@@ -263,18 +330,20 @@ function EmailGeneration() {
           <div className="flex items-center gap-4">
             <button
               className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-4 text-sm font-medium text-white hover:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:ring-offset-2 disabled:opacity-50"
-              disabled={isSubmitting || !isDirty}
+              disabled={isSubmitting || !isDirty || !hasFeedbackContent}
               type="submit"
             >
               <Send className="size-4" />
               {isSubmitting
-                ? "Submitting…"
+                ? feedbackId
+                  ? "Updating…"
+                  : "Submitting…"
                 : hasSubmittedOnce
                   ? "Update feedback"
                   : "Submit feedback"}
             </button>
-            {feedbackSubmitted && (
-              <p className="text-sm text-teal-700">Feedback submitted.</p>
+            {feedbackSubmitted && feedbackSuccessMessage && (
+              <p className="text-sm text-teal-700">{feedbackSuccessMessage}</p>
             )}
             {submitError && (
               <p className="text-sm text-red-600">{submitError}</p>

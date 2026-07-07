@@ -1,5 +1,9 @@
 from app.crud.conversation import create_conversation  # noqa: F401
-from app.crud.feedback import create_feedback, get_all_feedback_for_export  # noqa: F401
+from app.crud.feedback import (  # noqa: F401
+    create_feedback,
+    get_all_feedback_for_export,
+    update_feedback,
+)
 from app.crud.message import create_message  # noqa: F401
 from app.crud.user import (  # noqa: F401
     authenticate,

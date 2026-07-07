@@ -2,6 +2,7 @@ import csv
 import io
 import logging
 import time
+import uuid
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
@@ -17,6 +18,7 @@ from app.models import (
     AnnotationTag,
     Conversation,
     ConversationCreate,
+    Feedback,
     FeedbackCreate,
     FunctionalityType,
     Message,
@@ -27,6 +29,7 @@ from app.models import (
 from app.models.email import (
     EmailFeedbackRequest,
     EmailFeedbackResponse,
+    EmailFeedbackUpdateRequest,
     EmailGenerateRequest,
     EmailGenerateResponse,
 )
@@ -259,3 +262,37 @@ def submit_feedback(
     )
 
     return EmailFeedbackResponse(feedback_id=feedback.id)
+
+@router.put("/feedback/{feedback_id}", response_model=EmailFeedbackResponse)
+def update_feedback(
+    feedback_id: uuid.UUID,
+    body: EmailFeedbackUpdateRequest,
+    session: SessionDep,
+    current_user: CurrentUserDep,
+) -> EmailFeedbackResponse:
+    feedback = session.get(Feedback, feedback_id)
+
+    if not feedback:
+        raise HTTPException(status_code=404, detail="Feedback not found")
+
+    if feedback.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorised")
+
+    spans = [
+        AnnotationSpanCreate(
+            start_offset=a.start,
+            end_offset=a.end,
+            highlighted_text=a.text,
+            tag=AnnotationTag(a.tag),
+        )
+        for a in body.annotations
+    ]
+
+    updated_feedback = crud.update_feedback(
+        session=session,
+        feedback=feedback,
+        comment=body.custom_comment,
+        spans=spans,
+    )
+
+    return EmailFeedbackResponse(feedback_id=updated_feedback.id)

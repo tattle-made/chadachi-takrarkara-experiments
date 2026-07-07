@@ -28,3 +28,7 @@ class EmailFeedbackRequest(SQLModel):
 
 class EmailFeedbackResponse(SQLModel):
     feedback_id: uuid.UUID
+
+class EmailFeedbackUpdateRequest(SQLModel):
+    annotations: list[AnnotationInput]
+    custom_comment: str | None = None

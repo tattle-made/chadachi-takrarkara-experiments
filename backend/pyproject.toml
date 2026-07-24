@@ -12,6 +12,7 @@ dependencies = [
     "pwdlib[argon2,bcrypt]>=0.2.0",
     "PyJWT>=2.8.0",
     "openai>=1.0.0",
+    "kaapi-guardrails",
 ]
 
 [dependency-groups]
@@ -25,6 +26,9 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[tool.uv.sources]
+kaapi-guardrails = { git = "https://github.com/maanasb01/kaapi-guardrails.git", subdirectory = "backend", rev = "feat/try-using-as-package" }
 
 [build-system]
 requires = ["hatchling"]

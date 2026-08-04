@@ -239,6 +239,7 @@ version = "0.1.0"
 source = { editable = "backend" }
 dependencies = [
     { name = "alembic" },
+    { name = "en-core-web-lg" },
     { name = "fastapi", extra = ["standard"] },
     { name = "kaapi-guardrails" },
     { name = "openai" },
@@ -260,6 +261,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "alembic", specifier = ">=1.12.1,<2.0.0" },
+    { name = "en-core-web-lg", url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.138.1" },
     { name = "kaapi-guardrails", git = "https://github.com/maanasb01/kaapi-guardrails.git?subdirectory=backend&rev=feat%2Ftry-using-as-package" },
     { name = "openai", specifier = ">=1.0.0" },
@@ -1072,6 +1074,14 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/a2/78/0d2db9382c92a163d7095fc08efff7800880f830a152cfced40161e7638d/emoji-2.15.0.tar.gz", hash = "sha256:eae4ab7d86456a70a00a985125a03263a5eac54cd55e51d7e184b1ed3b6757e4", size = 615483, upload_time = "2025-09-21T12:13:02.755Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e1/5e/4b5aaaabddfacfe36ba7768817bd1f71a7a810a43705e531f3ae4c690767/emoji-2.15.0-py3-none-any.whl", hash = "sha256:205296793d66a89d88af4688fa57fd6496732eb48917a87175a023c8138995eb", size = 608433, upload_time = "2025-09-21T12:13:01.197Z" },
+]
+
+[[package]]
+name = "en-core-web-lg"
+version = "3.8.0"
+source = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl" }
+wheels = [
+    { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl", hash = "sha256:293e9547a655b25499198ab15a525b05b9407a75f10255e405e8c3854329ab63" },
 ]
 
 [[package]]

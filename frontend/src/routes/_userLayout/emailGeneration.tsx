@@ -66,6 +66,7 @@ function EmailGeneration() {
   const [generateError, setGenerateError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [feedbackId, setFeedbackId] = useState<string | null>(null)
+  const [safeEmail, setSafeEmail] = useState<string | null>(null)
   const trimmedCustomComment = customComment.trim()
   const hasFeedbackContent =
     annotations.length > 0 || trimmedCustomComment.length > 0
@@ -96,6 +97,7 @@ function EmailGeneration() {
     setGenerateError(null)
     setSubmitError(null)
     setFeedbackId(null)
+    setSafeEmail(null)
 
     try {
       const response = await apiClient.post<{
@@ -107,11 +109,20 @@ function EmailGeneration() {
       setGeneratedEmail(response.data.email)
       setMessageId(response.data.message_id)
     } catch (error) {
+
       if (isAxiosError(error) && !error.response) {
         setGenerateError(
           "Unable to reach the server — check your connection and try again.",
         )
-      } else {
+      } 
+      else if (isAxiosError(error) && error?.response?.status === 422 && error?.response?.data?.detail?.code === "pii_detected"){
+        setGenerateError(
+          "Email generation failed. PII is detected in the input. Please remove the sensetive information and try again.",
+        )
+        setSafeEmail(error?.response?.data?.detail?.safe_text)
+
+      }
+       else {
         setGenerateError("Email generation failed. Please try again.")
       }
     } finally {
@@ -218,7 +229,7 @@ function EmailGeneration() {
           />
         </div>
 
-        <div className="mt-4 flex items-center gap-4">
+        <div className="mt-4 flex flex-col gap-4">
           <button
             className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-slate-900 px-4 text-sm font-medium text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:ring-offset-2 disabled:opacity-50"
             disabled={!userQuery.trim() || isGenerating}
@@ -233,6 +244,10 @@ function EmailGeneration() {
           </button>
           {generateError && (
             <p className="text-sm text-red-600">{generateError}</p>
+          )}
+
+          {safeEmail && (
+            <p className="text-sm text-red-800"><span className="font-bold">Safe Email:</span> {safeEmail}</p>
           )}
         </div>
       </form>
@@ -276,7 +291,7 @@ function EmailGeneration() {
               <div className="mt-3 space-y-2">
                 {TAGS.map((tagName) => (
                   <label
-                    className="flex min-h-10 items-center gap-3 rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-700 has-[:checked]:border-slate-900 has-[:checked]:bg-slate-50"
+                    className="flex min-h-10 items-center gap-3 rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-700 has-checked:border-slate-900 has-checked:bg-slate-50"
                     key={tagName}
                   >
                     <input

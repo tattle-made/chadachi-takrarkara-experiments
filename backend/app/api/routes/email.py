@@ -35,6 +35,9 @@ from app.models.email import (
 )
 from app.models.feedback import AnnotationSpanCreate
 
+from kaapi_guardrails.core.validators.pii_remover import PIIRemover
+from guardrails import Guard
+
 router = APIRouter(prefix="/email", tags=["email"])
 
 _openai = OpenAI(api_key=settings.OPENAI_API_KEY)
@@ -67,6 +70,19 @@ Please be aware that I will add relevant evidence and attachments to this email,
 Please also note that in no case should you include the name of any of the people mentioned in the case detail.
 """
 
+def check_pii(text: str) -> tuple[str, bool]:
+
+    pii_guard = Guard().use(PIIRemover())
+    result = pii_guard.validate(text)
+
+    safe_text = result.validated_output or text
+    pii_was_found = any(
+        summary.validator_name == "PIIRemover"
+        and summary.validator_status == "fail"
+        for summary in result.validation_summaries
+    )
+
+    return safe_text, pii_was_found
 
 @router.post("/generate", response_model=EmailGenerateResponse)
 def generate_email(
@@ -74,6 +90,19 @@ def generate_email(
     session: SessionDep,
     current_user: CurrentUserDep,
 ) -> EmailGenerateResponse:
+    safe_text, pii_was_found = check_pii(body.case_details)
+
+    if pii_was_found:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "pii_detected",
+                "message": "PII was detected. Please remove personal information and try again.",
+                "safe_text": safe_text,
+            }
+            
+        )
+    
     conversation = crud.create_conversation(
         session=session,
         conversation_in=ConversationCreate(

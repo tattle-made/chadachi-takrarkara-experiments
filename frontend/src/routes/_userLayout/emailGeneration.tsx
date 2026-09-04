@@ -247,7 +247,7 @@ function EmailGeneration() {
           )}
 
           {safeEmail && (
-            <p className="text-sm text-red-800"><span className="font-bold">Safe Email:</span> {safeEmail}</p>
+            <p className="text-sm text-red-800"><span className="font-bold">Safe Input:</span> {safeEmail}</p>
           )}
         </div>
       </form>

@@ -37,6 +37,10 @@ from app.models.feedback import AnnotationSpanCreate
 
 from kaapi_guardrails.core.validators.pii_remover import PIIRemover
 from guardrails import Guard
+from presidio_analyzer.context_aware_enhancers import LemmaContextAwareEnhancer
+from presidio_analyzer.predefined_recognizers.country_specific.india.in_pan_recognizer import (
+    InPanRecognizer,
+)
 
 router = APIRouter(prefix="/email", tags=["email"])
 
@@ -70,10 +74,40 @@ Please be aware that I will add relevant evidence and attachments to this email,
 Please also note that in no case should you include the name of any of the people mentioned in the case detail.
 """
 
-def check_pii(text: str) -> tuple[str, bool]:
+# Presidio's "PAN (Low)" pattern matches any 10-character token containing a letter and
+# 4 digits, scoring it 0.01, and PIIRemover internally never passes its threshold down to analyze()
+# (so Presidio's default cutoff of 0 keeps everything). The result is that ordinary
+# tokens like "CASE123456" and random 10 letters words get redacted as <IN_PAN>. Drop that pattern, and match
+# context words as whole words so "company" no longer counts as the context word "pan"
+# and boosts the score of nearby tokens.
+_strict_pan_patterns = [p for p in InPanRecognizer.PATTERNS if p.name != "PAN (Low)"]
 
-    pii_guard = Guard().use(PIIRemover())
-    result = pii_guard.validate(text)
+_pii_guard: Guard | None = None
+
+
+def _get_pii_guard() -> Guard:
+    """Build the PII guard once, patching Presidio's over-broad PAN recognizer.
+
+    Note that PIIRemover shares a single cached AnalyzerEngine across instances, so this
+    patch applies process-wide.
+    """
+    global _pii_guard
+    if _pii_guard is None:
+        validator = PIIRemover()
+        # Swap Presidio's PAN recognizer for one without the "PAN (Low)" pattern.
+        validator.analyzer.registry.remove_recognizer("InPanRecognizer")
+        validator.analyzer.registry.add_recognizer(
+            InPanRecognizer(patterns=_strict_pan_patterns)
+        )
+        validator.analyzer.context_aware_enhancer = LemmaContextAwareEnhancer(
+            context_matching_mode="whole_word"
+        )
+        _pii_guard = Guard().use(validator)
+    return _pii_guard
+
+
+def check_pii(text: str) -> tuple[str, bool]:
+    result = _get_pii_guard().validate(text)
 
     safe_text = result.validated_output or text
     pii_was_found = any(

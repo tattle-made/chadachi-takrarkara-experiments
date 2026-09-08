@@ -6,7 +6,7 @@ appends the results to OUTPUT_CSV. Retries a failed call once.
 CASES_FILE is a JSON list of {"id": ..., "case_details": ...} objects.
 
 Usage (from inside backend/):
-    uv run python experiments/run_email_experiment.py
+    uv run python ml_experiments/run_email_experiment.py
 """
 import csv
 import json
@@ -30,8 +30,8 @@ from app.models.email import EmailGenerateRequest  # noqa: E402
 # --- Edit these for each run ---
 EXPERIMENT_NUMBER = 1  # bump this every time you start a new experiment
 EXPERIMENT_DESCRIPTION = "baseline"  # e.g. "baseline" or "tried reordering the policy section"
-CASES_FILE = BACKEND_DIR / "experiments" / "inputs" / "case_set_1.json"
-OUTPUT_CSV = BACKEND_DIR / "experiments" / "results" / "results_experiment_1.csv"
+CASES_FILE = BACKEND_DIR / "ml_experiments" / "inputs" / "case_set_1.json"
+OUTPUT_CSV = BACKEND_DIR / "ml_experiments" / "results" / "results_experiment_1.csv"
 #--------------------------------
 
 #--- OTHER Configs 

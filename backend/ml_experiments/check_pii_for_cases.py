@@ -5,7 +5,7 @@ generate_email() route uses. No DB, no OpenAI calls, no CSV - just prints
 which case ids would get rejected, so you can fix them before a full run.
 
 Usage (from inside backend/):
-    uv run python experiments/check_pii_for_cases.py
+    uv run python ml_experiments/check_pii_for_cases.py
 """
 import json
 import sys
@@ -16,7 +16,7 @@ sys.path.insert(0, str(BACKEND_DIR))
 
 from app.api.routes.email import check_pii  # noqa: E402
 
-CASES_FILE = BACKEND_DIR / "experiments" / "inputs" / "case_set_1.json"
+CASES_FILE = BACKEND_DIR / "ml_experiments" / "inputs" / "case_set_1.json"
 
 
 def main() -> None:

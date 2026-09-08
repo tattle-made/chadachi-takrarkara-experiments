@@ -10,6 +10,7 @@ Usage (from inside backend/):
 """
 import csv
 import json
+import random
 import subprocess
 import sys
 import time
@@ -28,15 +29,15 @@ from app.core.db import engine  # noqa: E402
 from app.models.email import EmailGenerateRequest  # noqa: E402
 
 # --- Edit these for each run ---
-EXPERIMENT_NUMBER = 1  # bump this every time you start a new experiment
-EXPERIMENT_DESCRIPTION = "baseline"  # e.g. "baseline" or "tried reordering the policy section"
+EXPERIMENT_NUMBER = 2  # bump this every time you start a new experiment
+EXPERIMENT_DESCRIPTION = "updated prompt: changed Meta policies to relevant platform policies; added strict instructions to only answer for mentioned social media platforms; added strict instructions to remove LLM conversational preamble/acknowledgement (not the email's own greeting line)"  # e.g. "baseline" or "tried reordering the policy section"
 CASES_FILE = BACKEND_DIR / "ml_experiments" / "inputs" / "case_set_1.json"
-OUTPUT_CSV = BACKEND_DIR / "ml_experiments" / "results" / "results_experiment_1.csv"
+OUTPUT_CSV = BACKEND_DIR / "ml_experiments" / "results" / "results_experiment_2_Sep-8_2026.csv"
 #--------------------------------
 
 #--- OTHER Configs 
 REPEATS = 10  # how many times to run each case
-REQUEST_DELAY_SECONDS = 2  
+REQUEST_DELAY_SECONDS = 3  
 
 # --------------------------------
 
@@ -129,32 +130,37 @@ def main() -> None:
             if is_new_file:
                 writer.writerow(CSV_HEADER)
 
-            for case in cases:
+            # Interleave cases instead of running all repeats of one case back to back
+            work_items = [
+                (case, run_number) for case in cases for run_number in range(1, REPEATS + 1)
+            ]
+            random.shuffle(work_items)
+
+            for case, run_number in work_items:
                 prompt_id = case["id"]
                 case_details = case["case_details"]
                 created_by = case.get("created_by", "")  # optional field
-                for run_number in range(1, REPEATS + 1):
-                    print(f"Running case {prompt_id!r}, run {run_number}/{REPEATS}...")
-                    result = call_with_retry(session, user, case_details)
-                    writer.writerow(
-                        [
-                            EXPERIMENT_NUMBER,
-                            EXPERIMENT_DESCRIPTION,
-                            commit_id,
-                            prompt_id,
-                            created_by,
-                            run_number,
-                            datetime.now(timezone.utc).isoformat(),
-                            case_details,
-                            result["output"],
-                            result["conversation_id"],
-                            result["message_id"],
-                            result["error"],
-                            result["retried"],
-                        ]
-                    )
-                    f.flush()
-                    time.sleep(REQUEST_DELAY_SECONDS)
+                print(f"Running case {prompt_id!r}, run {run_number}/{REPEATS}...")
+                result = call_with_retry(session, user, case_details)
+                writer.writerow(
+                    [
+                        EXPERIMENT_NUMBER,
+                        EXPERIMENT_DESCRIPTION,
+                        commit_id,
+                        prompt_id,
+                        created_by,
+                        run_number,
+                        datetime.now(timezone.utc).isoformat(),
+                        case_details,
+                        result["output"],
+                        result["conversation_id"],
+                        result["message_id"],
+                        result["error"],
+                        result["retried"],
+                    ]
+                )
+                f.flush()
+                time.sleep(REQUEST_DELAY_SECONDS)
 
     print(f"Done. Results appended to {OUTPUT_CSV}")
 

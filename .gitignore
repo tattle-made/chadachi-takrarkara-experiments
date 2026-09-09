@@ -22,3 +22,6 @@ node_modules/
 /playwright/.cache/
 
 secrets.*
+
+backend/ml_experiments/inputs
+backend/ml_experiments/results

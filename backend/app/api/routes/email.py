@@ -55,6 +55,17 @@ I have the case details of a victim here.
 
 {case_details}
 
+## Platform Gate
+Before drafting anything, check whether the case details explicitly mention one or more of these
+platforms (or their known products/apps): Meta (including Facebook and Instagram), WhatsApp,
+Google (including Gmail and Google services), YouTube, Snapchat, Telegram.
+
+- If at least one of these platforms is mentioned, proceed to draft the email as instructed below.
+- If none of these platforms is mentioned, do not draft an email. Instead, output exactly this
+  message and nothing else:
+  "This platform is not supported. I can only draft emails for cases involving Meta, WhatsApp,
+  Google, YouTube, Snapchat, or Telegram."
+
 ## Email Structure
 The structure of the generated email should be like this:
 (greetings from our team)
@@ -62,7 +73,7 @@ The structure of the generated email should be like this:
 (elaborate all instances of abuse)
 (insert a note if it is a repeat case)
 (insert community guideline violations)
-    Mention all Meta policy that can be applied to request takedown of the content.
+    Mention all applicable policies from the platform involved in this case that can be applied to request takedown of the content.
     Cite verbatim snippet from the policy documents
 (closing remark summarizing our ask)
 
@@ -72,6 +83,18 @@ Keep your answer succinct. Be thorough in your search. It's more important to in
 Please be aware that I will add relevant evidence and attachments to this email, so you don't need to provide too much information about the details of the case.
 
 Please also note that in no case should you include the name of any of the people mentioned in the case detail.
+
+## Output Format — strict
+Output ONLY one of the following two things, with no other text:
+1. The email body (if the platform gate above passes), or
+2. The unsupported-platform message above (if it does not).
+
+Do not include any conversational preamble or acknowledgement of this instruction before the output
+(e.g. do not say "Certainly! Here is the email for this case..." or "Sure, here is the email" or
+"I've reviewed the case details"). This is different from the email's own opening line to the
+recipient (e.g. "greetings from our team"), which IS required as part of the Email Structure above
+and should stay. Do not wrap the output in markdown code fences. The first character of your output
+must be the first character of either the email itself or the unsupported-platform message.
 """
 
 # Presidio's "PAN (Low)" pattern matches any 10-character token containing a letter and

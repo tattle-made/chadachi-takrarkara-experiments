@@ -1,4 +1,4 @@
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from pydantic import AnyUrl, BeforeValidator, PostgresDsn, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -58,6 +58,12 @@ class Settings(BaseSettings):
 
     OPENAI_API_KEY: str
     OPENAI_VECTOR_STORE_ID: str
+
+    GOOGLE_CLIENT_ID: str
+    GOOGLE_CLIENT_SECRET: str
+    GOOGLE_REDIRECT_URI: str
+    TOKEN_ENCRYPTION_KEY: str
+    STORAGE_BACKEND: Literal["drive"] = "drive"
 
 
 settings = Settings()  # type: ignore

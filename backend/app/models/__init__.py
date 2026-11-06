@@ -5,6 +5,21 @@ from app.models.conversation import (  # noqa: F401
     ConversationCreate,
     ConversationPublic,
 )
+from app.models.dmca import (  # noqa: F401
+    Case,
+    CaseLink,
+    Domain,
+    DomainRecipient,
+    DomainRelation,
+    EmailType,
+    LegalGround,
+    Profile,
+    Recipient,
+    RecipientEmail,
+    TakedownEmail,
+    TakedownEmailLegalGround,
+    TakedownEmailLink,
+)
 from app.models.enums import (  # noqa: F401
     AnnotationTag,
     FunctionalityType,

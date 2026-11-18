@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str
     OPENAI_VECTOR_STORE_ID: str
 
+    # where the browser is sent back to after connecting Google
+    FRONTEND_HOST: str = "http://localhost:5173"
+
     GOOGLE_CLIENT_ID: str
     GOOGLE_CLIENT_SECRET: str
     GOOGLE_REDIRECT_URI: str

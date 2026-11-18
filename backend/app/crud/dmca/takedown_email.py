@@ -5,7 +5,6 @@ raise DraftError; the routes turn it into a 400.
 """
 
 import uuid
-from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
@@ -18,7 +17,6 @@ from app.models.dmca.recipient import Recipient
 from app.models.dmca.takedown_email import (
     DraftItem,
     TakedownEmail,
-    TakedownEmailLink,
     TakedownEmailPublic,
     TakedownEmailUpdate,
 )
@@ -63,7 +61,10 @@ def default_legal_grounds(*, session: Session, is_minor: bool) -> list[LegalGrou
 
 @dataclass
 class _Group:
-    """The rows of the review screen that end up in one email."""
+    """Review-screen rows that become one email: same recipient and address type.
+
+    e.g. site-a.com -> Cloudflare and site-b.com -> Cloudflare are one group.
+    """
 
     recipient: Recipient
     email_type: EmailType | None
@@ -74,28 +75,11 @@ class _Group:
     relations: set[DomainRelation | None] = field(default_factory=set)
 
 
-def _emailed_link_ids(
-    *, session: Session, case_id: uuid.UUID, recipient_ids: set[uuid.UUID]
-) -> dict[uuid.UUID, set[uuid.UUID]]:
-    """recipient_id -> ids of this case's links already in an email to them
-    (draft or sent)."""
-    query = (
-        select(TakedownEmail.recipient_id, TakedownEmailLink.link_id)
-        .join(TakedownEmailLink, col(TakedownEmailLink.email_id) == TakedownEmail.id)
-        .where(
-            TakedownEmail.case_id == case_id,
-            col(TakedownEmail.recipient_id).in_(recipient_ids),
-        )
-    )
-    emailed: dict[uuid.UUID, set[uuid.UUID]] = defaultdict(set)
-    for recipient_id, link_id in session.exec(query):
-        if recipient_id is not None:
-            emailed[recipient_id].add(link_id)
-    return emailed
-
-
 def _existing_draft(*, session: Session, case: Case, item: DraftItem) -> TakedownEmail:
-    """The draft a row asks to add its links to, checked to be usable."""
+    """Load the draft a row wants its links added to (its add_to_email_id).
+
+    DraftError unless it's in this case, still a draft, and for the same recipient.
+    """
     email = session.get(TakedownEmail, item.add_to_email_id)
     if email is None or email.case_id != case.id:
         raise DraftError("The draft to add to isn't in this case")
@@ -127,9 +111,9 @@ def create_drafts(
     A row with add_to_email_id adds its links to that existing draft instead; an
     edited body there is reset so the new links show up in it.
 
-    Links go in only if they aren't marked removed and aren't already in an email
-    to that recipient, so nothing is sent to the same place twice. Escalate uses
-    the same call: the next recipient hasn't had those links yet.
+    Links marked removed are left out. Links already emailed are not: sending
+    one again is allowed (the review screen warns about it). Escalate uses the
+    same call with the next recipient.
     """
     pending = [link for link in _sorted_links(case.links) if link.removed_at is None]
 
@@ -161,7 +145,7 @@ def create_drafts(
             ]
             try:
                 picked = pick_address(
-                    addresses, is_minor=case.is_minor, wanted=item.email_type
+                    addresses, is_minor=case.is_minor, chosen_type=item.email_type
                 )
             except ValueError:
                 raise DraftError(
@@ -174,25 +158,20 @@ def create_drafts(
         group.domains.add(item.domain.strip().lower())
         group.relations.add(item.relation)
 
-    emailed = _emailed_link_ids(
-        session=session, case_id=case.id, recipient_ids=recipient_ids
-    )
     grounds = default_legal_grounds(session=session, is_minor=case.is_minor)
 
     created: list[TakedownEmail] = []
     updated: list[TakedownEmail] = []
     for group in groups.values():
-        already = emailed[group.recipient.id]
+        # links the draft being added to already has aren't added twice
+        skip = {link.id for link in group.existing.links} if group.existing else set()
         links = [
             link
             for link in pending
-            if link.domain in group.domains and link.id not in already
+            if link.domain in group.domains and link.id not in skip
         ]
         if not links:
-            # nothing new for this recipient (all removed or already emailed)
             continue
-        # so a second group for the same recipient doesn't take them again
-        already.update(link.id for link in links)
 
         if group.existing is None:
             draft = TakedownEmail(
@@ -226,8 +205,7 @@ def create_drafts(
 
     if not created and not updated:
         raise DraftError(
-            "No new links to send: they're marked removed or were already "
-            "emailed to these recipients"
+            "No links to send: they're marked removed or already in the draft"
         )
 
     # one commit for everything, so it's all or nothing

@@ -345,22 +345,26 @@ def test_delete_draft(client, member, draft):
     assert client.get(url, headers=member).status_code == 404
 
 
-# --- links already emailed, and adding to an existing draft ---
+# --- sending links again, and adding to an existing draft ---
 
 
 def add_link(client, member, case_id, url) -> None:
     post(client, member, f"/cases/{case_id}/links", {"text": url})
 
 
-def test_links_already_emailed_to_recipient_are_left_out(client, member, setup, draft):
+def test_links_already_emailed_can_be_sent_again(
+    client, session: Session, member, setup, draft
+):
+    set_status(session, draft["id"], EmailStatus.sent)
     add_link(client, member, setup["case"], "site-a.test/3")
     item = {"domain": "site-a.test", "recipient_id": setup["cf"]}
     (second,) = created(client, member, setup["case"], [item])
-    # only the new link; 1 and 2 are already in the first draft
-    assert [link["url"] for link in second["links"]] == ["site-a.test/3"]
-
-    # nothing new left for Cloudflare
-    assert drafts(client, member, setup["case"], [item]).status_code == 400
+    # all of the site's links that are still up, the sent ones too
+    assert [link["url"] for link in second["links"]] == [
+        "site-a.test/1",
+        "site-a.test/2",
+        "site-a.test/3",
+    ]
 
 
 def test_escalation_to_another_recipient_gets_the_same_links(
@@ -391,6 +395,16 @@ def test_add_to_existing_draft(client, member, setup, draft):
         "site-a.test/3",
     ]
     assert "site-a.test/3" in updated["body"]
+
+
+def test_add_to_draft_with_nothing_new_is_400(client, member, setup, draft):
+    item = {
+        "domain": "site-a.test",
+        "recipient_id": setup["cf"],
+        "add_to_email_id": draft["id"],
+    }
+    # the draft already has both site-a.test links
+    assert drafts(client, member, setup["case"], [item]).status_code == 400
 
 
 def test_add_to_edited_draft_resets_body(client, member, setup, draft):

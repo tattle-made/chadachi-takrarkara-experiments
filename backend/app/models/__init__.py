@@ -12,6 +12,7 @@ from app.models.dmca import (  # noqa: F401
     DomainRecipient,
     DomainRelation,
     EmailType,
+    GoogleConnection,
     LegalGround,
     Profile,
     Recipient,

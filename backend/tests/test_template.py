@@ -98,31 +98,31 @@ CF = [
 
 
 def test_default_adult_prefers_dmca_and_first_address():
-    assert pick_address(CF, is_minor=False, wanted=None) == (
+    assert pick_address(CF, is_minor=False, chosen_type=None) == (
         EmailType.dmca,
         "dmca@cf.test",
     )
 
 
-def test_wanted_type_is_used():
-    assert pick_address(CF, is_minor=False, wanted=EmailType.abuse) == (
+def test_chosen_type_is_used():
+    assert pick_address(CF, is_minor=False, chosen_type=EmailType.abuse) == (
         EmailType.abuse,
         "abuse@cf.test",
     )
 
 
-def test_wanted_type_missing_raises():
+def test_chosen_type_missing_raises():
     with pytest.raises(ValueError):
-        pick_address(CF, is_minor=False, wanted=EmailType.csam)
+        pick_address(CF, is_minor=False, chosen_type=EmailType.csam)
 
 
 def test_minor_prefers_csam_then_dmca():
     with_csam = [*CF, AddressInput("csam@cf.test", EmailType.csam)]
-    assert pick_address(with_csam, is_minor=True, wanted=None) == (
+    assert pick_address(with_csam, is_minor=True, chosen_type=None) == (
         EmailType.csam,
         "csam@cf.test",
     )
-    assert pick_address(CF, is_minor=True, wanted=None) == (
+    assert pick_address(CF, is_minor=True, chosen_type=None) == (
         EmailType.dmca,
         "dmca@cf.test",
     )
@@ -130,14 +130,14 @@ def test_minor_prefers_csam_then_dmca():
 
 def test_falls_back_to_general():
     only_general = [AddressInput("hello@x.test", EmailType.general)]
-    assert pick_address(only_general, is_minor=False, wanted=None) == (
+    assert pick_address(only_general, is_minor=False, chosen_type=None) == (
         EmailType.general,
         "hello@x.test",
     )
 
 
 def test_no_addresses_is_none():
-    assert pick_address([], is_minor=False, wanted=None) is None
+    assert pick_address([], is_minor=False, chosen_type=None) is None
     # an adult case never uses a csam-only address by default
     only_csam = [AddressInput("csam@x.test", EmailType.csam)]
-    assert pick_address(only_csam, is_minor=False, wanted=None) is None
+    assert pick_address(only_csam, is_minor=False, chosen_type=None) is None

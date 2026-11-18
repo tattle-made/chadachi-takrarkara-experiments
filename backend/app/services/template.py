@@ -135,25 +135,25 @@ def render_body(
 
 
 def pick_address(
-    addresses: Sequence[AddressInput], *, is_minor: bool, wanted: EmailType | None
+    addresses: Sequence[AddressInput], *, is_minor: bool, chosen_type: EmailType | None
 ) -> tuple[EmailType, str] | None:
-    """Which of a recipient's addresses to send to: (type, address), or None.
+    """Choose the recipient's address a new draft goes to. Returns (type, address).
 
-    - wanted given (the dropdown): an address of that type. ValueError if the
-      recipient has none, since the dropdown only offers types it has.
-    - wanted left out: the first type in the default order that it has.
-    If the recipient has several addresses of one type, the first one wins, so
-    pass them oldest first.
+    - Type picked in the dropdown (`chosen_type`): use that type, or raise ValueError
+      if the recipient has no address of it.
+    - Nothing picked: try ADULT_ORDER / MINOR_ORDER and use the first type the
+      recipient has. None if it has no addresses at all.
+    - Two addresses of the same type: the first one in the list is used.
     """
     first_of_type: dict[EmailType, str] = {}
     for a in addresses:
         # setdefault only sets it the first time, so the oldest address stays
         first_of_type.setdefault(a.email_type, a.address)
 
-    if wanted is not None:
-        if wanted not in first_of_type:
-            raise ValueError(f"no {wanted.value} address")
-        return wanted, first_of_type[wanted]
+    if chosen_type is not None:
+        if chosen_type not in first_of_type:
+            raise ValueError(f"no {chosen_type.value} address")
+        return chosen_type, first_of_type[chosen_type]
 
     for email_type in MINOR_ORDER if is_minor else ADULT_ORDER:
         if email_type in first_of_type:

@@ -23,3 +23,8 @@ class EmailStatus(str, Enum):
     sending = "sending"  # being sent right now
     sent = "sent"  # Gmail accepted it
     failed = "failed"  # gave up after retries; can be retried by hand
+
+
+class GoogleConnectionStatus(str, Enum):
+    connected = "connected"  # working; emails can be sent
+    broken = "broken"  # Google refused the token (revoked or expired): reconnect

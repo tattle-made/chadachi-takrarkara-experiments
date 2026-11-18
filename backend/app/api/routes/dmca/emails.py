@@ -67,10 +67,9 @@ def create_case_drafts(
     With add_to_email_id: the links go into that existing draft instead, and its
     body is reset to the template.
 
-    Links marked removed, or already in an email to that recipient, are left
-    out. Returns {"created": [...], "updated": [...]}.
+    Links marked removed are left out. Returns {"created": [...], "updated": [...]}.
     400 if a recipient doesn't exist or lacks the chosen type, the draft to add
-    to can't be used, or there are no new links to send.
+    to can't be used, or there are no links to send.
     """
     case = get_case_or_404(session, case_id)
     assert current_user.id is not None

@@ -18,6 +18,12 @@ from app.models.dmca.enums import (  # noqa: F401
     DomainRelation,
     EmailStatus,
     EmailType,
+    GoogleConnectionStatus,
+)
+from app.models.dmca.google_connection import (  # noqa: F401
+    GoogleConnection,
+    GoogleConnectUrl,
+    GoogleStatus,
 )
 from app.models.dmca.legal_ground import (  # noqa: F401
     LegalGround,

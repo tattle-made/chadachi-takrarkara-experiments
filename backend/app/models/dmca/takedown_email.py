@@ -65,11 +65,11 @@ class TakedownEmail(SQLModel, table=True):
         foreign_key="takedown_case.id", ondelete="CASCADE", index=True
     )
 
-    # who it goes to. SET NULL + the name copied here, so deleting a recipient
-    # in Config doesn't break the history of emails already sent to them
+    # who it goes to. Becomes None if the recipient is deleted in Config
     recipient_id: uuid.UUID | None = Field(
         default=None, foreign_key="recipient.id", ondelete="SET NULL", index=True
     )
+    # a copy of the recipient's name, so it's still here if the recipient is deleted
     recipient_name: str = Field(max_length=255)
     # the step this email is for (website_owner, cdn, ...), used by Escalate to
     # find the next one. None for a "New email" outside the sequence

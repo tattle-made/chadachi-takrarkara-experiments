@@ -6,6 +6,7 @@ from app.models.conversation import (  # noqa: F401
     ConversationPublic,
 )
 from app.models.dmca import (  # noqa: F401
+    Attachment,
     Case,
     CaseLink,
     Domain,
@@ -18,6 +19,7 @@ from app.models.dmca import (  # noqa: F401
     Recipient,
     RecipientEmail,
     TakedownEmail,
+    TakedownEmailAttachmentJoin,
     TakedownEmailLegalGround,
     TakedownEmailLink,
 )

@@ -113,10 +113,10 @@ def update_one_email(
     email_id: uuid.UUID,
     email_in: TakedownEmailUpdate,
 ) -> TakedownEmailPublic:
-    """Edit a draft: To address, subject, body, links, legal grounds.
+    """Edit a draft: To address, subject, body, links, legal grounds, documents.
 
     {"custom_body": null} throws away body edits and goes back to the template.
-    link_ids / legal_ground_ids replace the whole list.
+    link_ids / legal_ground_ids / attachment_ids replace the whole list.
     """
     email = get_email_or_404(session, email_id)
     ensure_draft(email)

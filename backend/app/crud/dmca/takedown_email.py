@@ -10,6 +10,11 @@ from datetime import datetime, timezone
 
 from sqlmodel import Session, col, select
 
+from app.models.dmca.attachment import (
+    MAX_ATTACHMENT_BYTES,
+    Attachment,
+    AttachmentPublic,
+)
 from app.models.dmca.case import Case, CaseLink, CaseLinkPublic
 from app.models.dmca.enums import DomainRelation, EmailStatus, EmailType
 from app.models.dmca.legal_ground import LegalGround, LegalGroundPublic
@@ -280,6 +285,10 @@ def to_public(email: TakedownEmail) -> TakedownEmailPublic:
             LegalGroundPublic.model_validate(g)
             for g in _sorted_grounds(email.legal_grounds)
         ],
+        attachments=[
+            AttachmentPublic.model_validate(a)
+            for a in sorted(email.attachments, key=lambda a: a.created_at)
+        ],
         status=email.status,
         attempts=email.attempts,
         last_error=email.last_error,
@@ -297,9 +306,10 @@ def update_takedown_email(
     """Edit a draft. The route checks it's still a draft first."""
     update_data = email_in.model_dump(exclude_unset=True)
 
-    # the two id lists aren't columns: swap them for the actual rows
+    # the id lists aren't columns: swap them for the actual rows
     link_ids = update_data.pop("link_ids", None)
     ground_ids = update_data.pop("legal_ground_ids", None)
+    attachment_ids = update_data.pop("attachment_ids", None)
 
     if link_ids is not None:
         links = list(
@@ -321,6 +331,21 @@ def update_takedown_email(
         if len(grounds) != len(set(ground_ids)):
             raise DraftError("Some legal grounds don't exist")
         db_email.legal_grounds = grounds
+
+    if attachment_ids is not None:
+        attachments = list(
+            session.exec(
+                select(Attachment).where(col(Attachment.id).in_(attachment_ids))
+            )
+        )
+        # every id must exist and be a document of this case's profile
+        if len(attachments) != len(set(attachment_ids)) or any(
+            a.profile_id != db_email.case.profile_id for a in attachments
+        ):
+            raise DraftError("Some documents don't belong to this profile")
+        if sum(a.size for a in attachments) > MAX_ATTACHMENT_BYTES:
+            raise DraftError("The documents add up to over 20 MB, too big for Gmail")
+        db_email.attachments = attachments
 
     # a body that matches the template (e.g. sent back untouched) isn't an edit,
     # so keep it generated. Checked after the links/grounds above are applied

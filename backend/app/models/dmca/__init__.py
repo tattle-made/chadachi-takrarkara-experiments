@@ -1,3 +1,8 @@
+from app.models.dmca.attachment import (  # noqa: F401
+    MAX_ATTACHMENT_BYTES,
+    Attachment,
+    AttachmentPublic,
+)
 from app.models.dmca.case import (  # noqa: F401
     Case,
     CaseBase,
@@ -15,6 +20,7 @@ from app.models.dmca.case import (  # noqa: F401
     UserSummary,
 )
 from app.models.dmca.enums import (  # noqa: F401
+    AttachmentKind,
     DomainRelation,
     EmailStatus,
     EmailType,
@@ -67,6 +73,7 @@ from app.models.dmca.takedown_email import (  # noqa: F401
     DraftsCreate,
     DraftsResult,
     TakedownEmail,
+    TakedownEmailAttachmentJoin,
     TakedownEmailLegalGround,
     TakedownEmailLink,
     TakedownEmailPublic,

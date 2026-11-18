@@ -28,3 +28,12 @@ class EmailStatus(str, Enum):
 class GoogleConnectionStatus(str, Enum):
     connected = "connected"  # working; emails can be sent
     broken = "broken"  # Google refused the token (revoked or expired): reconnect
+
+
+class AttachmentKind(str, Enum):
+    """What a profile's document is. Shown as its label in the email body."""
+
+    cyber_crime_report = "cyber_crime_report"
+    government_id = "government_id"
+    age_proof = "age_proof"  # for minor cases
+    other = "other"  # listed by its file name

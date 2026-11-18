@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.routes import auth, email, users, utils
+from app.api.routes.dmca import attachments as dmca_attachments
 from app.api.routes.dmca import cases as dmca_cases
 from app.api.routes.dmca import emails as dmca_emails
 from app.api.routes.dmca import google as dmca_google
@@ -19,3 +20,4 @@ api_router.include_router(dmca_profiles.router)
 api_router.include_router(dmca_cases.router)
 api_router.include_router(dmca_emails.router)
 api_router.include_router(dmca_google.router)
+api_router.include_router(dmca_attachments.router)

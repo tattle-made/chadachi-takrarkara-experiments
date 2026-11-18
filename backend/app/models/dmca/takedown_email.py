@@ -4,10 +4,12 @@ Created as drafts from the review screen (POST /dmca/cases/{id}/drafts), edited
 while they're drafts, then sent by the background sender. After sending nothing changes: the
 final text is frozen in sent_body, which is the record of what went out.
 
-Two link tables connect an email to:
+Three link tables connect an email to:
 - the case links it covers (takedown_email_link)
-- the legal grounds it cites (takedown_email_legal_ground). RESTRICT there means
-  the DB refuses to delete a ground any email uses.
+- the legal grounds it cites (takedown_email_legal_ground)
+- the profile documents sent with it (takedown_email_attachment_join)
+RESTRICT on the last two means the DB refuses to delete a ground or a document
+that an email uses.
 
 The body isn't stored while it's a draft unless someone edits it: custom_body is
 None means "generate it from the template", so fixes to a legal ground's text
@@ -20,6 +22,7 @@ from datetime import datetime, timezone
 import sqlalchemy as sa
 from sqlmodel import Column, Field, Relationship, SQLModel
 
+from app.models.dmca.attachment import Attachment, AttachmentPublic
 from app.models.dmca.case import Case, CaseLink, CaseLinkPublic
 from app.models.dmca.enums import DomainRelation, EmailStatus, EmailType
 from app.models.dmca.legal_ground import LegalGround, LegalGroundPublic
@@ -51,6 +54,17 @@ class TakedownEmailLegalGround(SQLModel, table=True):
     # RESTRICT: a ground that an email uses can't be deleted (turn it off instead)
     legal_ground_id: uuid.UUID = Field(
         foreign_key="legal_ground.id", ondelete="RESTRICT", primary_key=True
+    )
+
+
+class TakedownEmailAttachmentJoin(SQLModel, table=True):
+    __tablename__ = "takedown_email_attachment_join"
+
+    email_id: uuid.UUID = Field(
+        foreign_key="takedown_email.id", ondelete="CASCADE", primary_key=True
+    )
+    attachment_id: uuid.UUID = Field(
+        foreign_key="attachment.id", ondelete="RESTRICT", primary_key=True
     )
 
 
@@ -109,6 +123,7 @@ class TakedownEmail(SQLModel, table=True):
     # plain list of CaseLink; assigning a new list updates the link table
     links: list[CaseLink] = Relationship(link_model=TakedownEmailLink)
     legal_grounds: list[LegalGround] = Relationship(link_model=TakedownEmailLegalGround)
+    attachments: list[Attachment] = Relationship(link_model=TakedownEmailAttachmentJoin)
 
 
 # --- API schemas ---
@@ -144,6 +159,8 @@ class TakedownEmailUpdate(SQLModel):
     # replace the whole list (ids must belong to this case / exist)
     link_ids: list[uuid.UUID] | None = None
     legal_ground_ids: list[uuid.UUID] | None = None
+    # ids of the profile's documents to send with it (replaces the whole list)
+    attachment_ids: list[uuid.UUID] | None = None
 
 
 class TakedownEmailPublic(SQLModel):
@@ -160,6 +177,7 @@ class TakedownEmailPublic(SQLModel):
     is_body_custom: bool
     links: list[CaseLinkPublic]
     legal_grounds: list[LegalGroundPublic]
+    attachments: list[AttachmentPublic]
     status: EmailStatus
     attempts: int
     last_error: str | None

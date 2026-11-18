@@ -66,7 +66,11 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str
     GOOGLE_REDIRECT_URI: str
     TOKEN_ENCRYPTION_KEY: str
-    STORAGE_BACKEND: Literal["drive"] = "drive"
+    # where DMCA attachment files go: "drive" (the connected Google account), or
+    # "memory" for tests
+    STORAGE_BACKEND: Literal["drive", "memory"] = "drive"
+    # the Drive folder the app puts every file in (created if missing)
+    DRIVE_FOLDER_NAME: str = "DMCA takedowns (managed by the app, don't edit)"
 
 
 settings = Settings()  # type: ignore

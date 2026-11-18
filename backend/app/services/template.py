@@ -120,7 +120,6 @@ def render_body(
         "of such material, making this a punishable offense. A cybercrime report "
         "has been filed.",
         MINOR_PARAGRAPH if is_minor else None,
-        # TODO: the "Attachments:" block goes here once attachments are built
         "We implore you to take swift and decisive action to remove this content "
         "from your platform immediately. Failure to act promptly not only "
         "exacerbates the victim's trauma but also undermines your commitment to "

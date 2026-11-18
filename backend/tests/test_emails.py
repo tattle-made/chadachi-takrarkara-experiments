@@ -482,3 +482,60 @@ def test_cannot_delete_legal_ground_an_email_uses(client, admin, setup, draft):
     assert used.status_code == 409
     unused = client.delete(f"{BASE}/legal-grounds/{setup['optional']}", headers=admin)
     assert unused.status_code == 200
+
+
+# --- documents on a draft ---
+
+
+def upload_doc(client, member, profile_id, data=b"fake pdf") -> str:
+    """Upload a document to the profile and return its id."""
+    response = client.post(
+        f"{BASE}/profiles/{profile_id}/attachments",
+        data={"kind": "cyber_crime_report"},
+        files={"file": ("report.pdf", data, "application/pdf")},
+        headers=member,
+    )
+    assert response.status_code == 200, response.text
+    return response.json()["id"]
+
+
+def test_new_draft_has_no_documents(draft):
+    assert draft["attachments"] == []
+
+
+def test_attach_and_detach_documents(client, member, setup, draft):
+    doc_ids = [upload_doc(client, member, setup["profile"]) for _ in range(2)]
+    response = patch(client, member, draft["id"], {"attachment_ids": doc_ids})
+    assert response.status_code == 200, response.text
+    assert {a["id"] for a in response.json()["attachments"]} == set(doc_ids)
+    # documents aren't written into the body
+    assert "report.pdf" not in response.json()["body"]
+
+    response = patch(client, member, draft["id"], {"attachment_ids": []})
+    assert response.json()["attachments"] == []
+
+
+def test_document_of_another_profile_is_400(client, member, setup, draft):
+    other = post(client, member, "/profiles", {"full_name": "Someone Else"})
+    doc_id = upload_doc(client, member, other["id"])
+    response = patch(client, member, draft["id"], {"attachment_ids": [doc_id]})
+    assert response.status_code == 400
+
+
+def test_unknown_document_is_400(client, member, draft):
+    response = patch(
+        client, member, draft["id"], {"attachment_ids": [str(uuid.uuid4())]}
+    )
+    assert response.status_code == 400
+
+
+def test_documents_over_the_email_limit_are_400(
+    client, member, setup, draft, monkeypatch
+):
+    from app.crud.dmca import takedown_email as crud
+
+    doc_ids = [upload_doc(client, member, setup["profile"], b"123") for _ in range(2)]
+    monkeypatch.setattr(crud, "MAX_ATTACHMENT_BYTES", 5)
+    response = patch(client, member, draft["id"], {"attachment_ids": doc_ids})
+    assert response.status_code == 400
+    assert "20 MB" in response.json()["detail"]

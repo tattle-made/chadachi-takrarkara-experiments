@@ -2,7 +2,8 @@
 
 Any logged-in user can do everything here. Only drafts can be edited or
 deleted; once an email is queued or sent it's read-only (409 otherwise).
-Sending is done separately, by the background sender.
+POST /emails/send hands drafts to the background queue, which sends them one at
+a time; /retry sends a failed (or stuck) one again.
 """
 
 import uuid
@@ -11,23 +12,30 @@ from fastapi import APIRouter, HTTPException
 
 from app.api.deps import CurrentUserDep, SessionDep
 from app.api.routes.dmca.cases import get_case_or_404
+from app.crud.dmca.google_connection import get_connection
 from app.crud.dmca.takedown_email import (
     DraftError,
+    can_retry,
     create_drafts,
     delete_takedown_email,
     get_takedown_email,
+    list_by_ids,
     list_takedown_emails,
+    mark_queued,
     to_public,
     update_takedown_email,
 )
-from app.models.dmca.enums import EmailStatus
+from app.models.dmca.enums import EmailStatus, GoogleConnectionStatus
 from app.models.dmca.takedown_email import (
     DraftsCreate,
     DraftsResult,
+    EmailsSend,
     TakedownEmail,
     TakedownEmailPublic,
     TakedownEmailUpdate,
 )
+
+from app.services.queue import enqueue_sends
 
 router = APIRouter(prefix="/dmca", tags=["dmca"])
 
@@ -44,7 +52,11 @@ def ensure_draft(email: TakedownEmail) -> None:
     """Stop with a 409 unless the email is still a draft."""
     if email.status != EmailStatus.draft:
         raise HTTPException(
-            status_code=409, detail=f"This email is {email.status.value}, not a draft"
+            status_code=409,
+            detail=(
+                f"The email to {email.recipient_name} is already "
+                f"{email.status.value}. Refresh and try again."
+            ),
         )
 
 
@@ -139,3 +151,80 @@ def delete_one_email(
     ensure_draft(email)
     delete_takedown_email(session=session, db_email=email)
     return {"message": "Draft deleted"}
+
+
+# --- sending ---
+
+
+def ensure_google_connected(session: SessionDep) -> None:
+    """Stop with a 409 if Google isn't connected, before anything is queued."""
+    connection = get_connection(session=session)
+    if connection is None or connection.status != GoogleConnectionStatus.connected:
+        raise HTTPException(
+            status_code=409,
+            detail="Google isn't connected. An admin can connect it in Config.",
+        )
+
+
+def queue_or_503(session: SessionDep, emails: list[TakedownEmail]) -> None:
+    """Mark the emails queued and add their send jobs. If the queue can't take
+    them, put them back the way they were and stop with a 503."""
+    before = [(e, e.status, e.last_error, e.updated_at) for e in emails]
+    mark_queued(session=session, emails=emails)
+    try:
+        enqueue_sends([email.id for email in emails])
+    except Exception:
+        for email, status, last_error, updated_at in before:
+            email.status = status
+            email.last_error = last_error
+            email.updated_at = updated_at
+            session.add(email)
+        session.commit()
+        raise HTTPException(
+            status_code=503, detail="Couldn't start sending. Try again in a bit."
+        ) from None
+
+
+@router.post("/emails/send", response_model=list[TakedownEmailPublic])
+def send_emails(
+    session: SessionDep, _: CurrentUserDep, body: EmailsSend
+) -> list[TakedownEmailPublic]:
+    """Send drafts: {"email_ids": [...]}. All or nothing.
+
+    Each becomes "queued", and the background queue sends them one by one
+    (queued -> sending -> sent or failed). 404 if an id doesn't exist, 409 if
+    one isn't a draft or Google isn't connected, 400 if one has no To address.
+    """
+    ids = set(body.email_ids)
+    emails = list_by_ids(session=session, email_ids=list(ids))
+    if len(emails) != len(ids):
+        raise HTTPException(status_code=404, detail="Some emails don't exist")
+    for email in emails:
+        ensure_draft(email)
+        if not email.to_address:
+            raise HTTPException(
+                status_code=400,
+                detail=f"The email to {email.recipient_name} has no To address",
+            )
+    ensure_google_connected(session)
+    queue_or_503(session, emails)
+    return [to_public(e) for e in emails]
+
+
+@router.post("/emails/{email_id}/retry", response_model=TakedownEmailPublic)
+def retry_email(
+    session: SessionDep, _: CurrentUserDep, email_id: uuid.UUID
+) -> TakedownEmailPublic:
+    """Send a failed email again (or one stuck in "sending" for 10+ minutes).
+
+    It gets a fresh set of tries. 409 if it can't be retried (can_retry is false)
+    or Google isn't connected.
+    """
+    email = get_email_or_404(session, email_id)
+    if not can_retry(email):
+        raise HTTPException(
+            status_code=409, detail=f"This email is {email.status.value}; can't retry"
+        )
+    ensure_google_connected(session)
+    queue_or_503(session, [email])
+    return to_public(email)

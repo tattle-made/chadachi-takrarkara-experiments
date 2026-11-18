@@ -13,8 +13,10 @@ from sqlmodel import Column, Field, SQLModel
 
 from app.models.dmca.enums import AttachmentKind
 
-# Gmail allows 25 MB per email in total; this leaves room for the rest
-MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024
+# Gmail allows 25 MB per email, counted after attachments are encoded for
+# email (about a third bigger): 18 MB of files is about 24 MB once encoded
+MAX_ATTACHMENT_MB = 18
+MAX_ATTACHMENT_BYTES = MAX_ATTACHMENT_MB * 1024 * 1024
 
 
 class Attachment(SQLModel, table=True):

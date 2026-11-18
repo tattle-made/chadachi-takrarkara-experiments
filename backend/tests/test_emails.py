@@ -538,4 +538,4 @@ def test_documents_over_the_email_limit_are_400(
     monkeypatch.setattr(crud, "MAX_ATTACHMENT_BYTES", 5)
     response = patch(client, member, draft["id"], {"attachment_ids": doc_ids})
     assert response.status_code == 400
-    assert "20 MB" in response.json()["detail"]
+    assert "too big for Gmail" in response.json()["detail"]

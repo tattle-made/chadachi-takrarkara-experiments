@@ -1,5 +1,6 @@
 from app.models.dmca.attachment import (  # noqa: F401
     MAX_ATTACHMENT_BYTES,
+    MAX_ATTACHMENT_MB,
     Attachment,
     AttachmentPublic,
 )

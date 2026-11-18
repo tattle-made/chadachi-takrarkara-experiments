@@ -6,12 +6,13 @@ raise DraftError; the routes turn it into a 400.
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlmodel import Session, col, select
 
 from app.models.dmca.attachment import (
     MAX_ATTACHMENT_BYTES,
+    MAX_ATTACHMENT_MB,
     Attachment,
     AttachmentPublic,
 )
@@ -267,6 +268,22 @@ def generated_body(email: TakedownEmail) -> str:
     )
 
 
+# a send takes seconds; "sending" for longer means the app stopped mid-send
+STUCK_SENDING_AFTER = timedelta(minutes=10)
+
+
+def can_retry(email: TakedownEmail) -> bool:
+    """Failed, or stuck in "sending" (the app stopped during its last try)."""
+    if email.status == EmailStatus.failed:
+        return True
+    if email.status != EmailStatus.sending:
+        return False
+    updated = email.updated_at
+    if updated.tzinfo is None:  # SQLite (tests) drops the timezone
+        updated = updated.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc) - updated > STUCK_SENDING_AFTER
+
+
 def to_public(email: TakedownEmail) -> TakedownEmailPublic:
     """Build the response, including the body (which isn't a column)."""
     return TakedownEmailPublic(
@@ -292,6 +309,7 @@ def to_public(email: TakedownEmail) -> TakedownEmailPublic:
         status=email.status,
         attempts=email.attempts,
         last_error=email.last_error,
+        can_retry=can_retry(email),
         sent_at=email.sent_at,
         created_at=email.created_at,
     )
@@ -344,7 +362,9 @@ def update_takedown_email(
         ):
             raise DraftError("Some documents don't belong to this profile")
         if sum(a.size for a in attachments) > MAX_ATTACHMENT_BYTES:
-            raise DraftError("The documents add up to over 20 MB, too big for Gmail")
+            raise DraftError(
+                f"The documents add up to over {MAX_ATTACHMENT_MB} MB, too big for Gmail"
+            )
         db_email.attachments = attachments
 
     # a body that matches the template (e.g. sent back untouched) isn't an edit,
@@ -362,6 +382,27 @@ def update_takedown_email(
     session.commit()
     session.refresh(db_email)
     return db_email
+
+
+def list_by_ids(*, session: Session, email_ids: list[uuid.UUID]) -> list[TakedownEmail]:
+    """Load several emails by id, whatever their status. An id with no email
+    is skipped, not an error: the caller compares counts to spot it."""
+    query = select(TakedownEmail).where(col(TakedownEmail.id).in_(email_ids))
+    return list(session.exec(query))
+
+
+def mark_queued(*, session: Session, emails: list[TakedownEmail]) -> None:
+    """Mark emails queued (Send or Retry clicked), clearing any old error.
+    From here the background queue moves them on (see services/sending.py)."""
+    now = datetime.now(timezone.utc)
+    for email in emails:
+        email.status = EmailStatus.queued
+        email.last_error = None
+        email.updated_at = now
+        session.add(email)
+    session.commit()
+    for email in emails:
+        session.refresh(email)
 
 
 def delete_takedown_email(*, session: Session, db_email: TakedownEmail) -> None:

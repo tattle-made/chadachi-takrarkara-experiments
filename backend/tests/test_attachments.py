@@ -1,9 +1,12 @@
 """Tests for the DMCA attachments API: uploading, listing and downloading a
 profile's documents. Files go to the in-memory storage (STORAGE_BACKEND=memory)."""
 
+import json
 import uuid
 
+import httplib2  # type: ignore[import-untyped]
 import pytest
+from googleapiclient.errors import HttpError  # type: ignore[import-untyped]
 
 from app.api.routes.dmca import attachments as attachments_route
 from app.core.config import settings
@@ -111,6 +114,57 @@ def test_google_not_connected_is_409(client, member, profile_id, monkeypatch):
     response = upload(client, member, profile_id)
     assert response.status_code == 409
     assert "Config" in response.json()["detail"]
+
+
+class BrokenDrive:
+    """Storage whose every call fails the way Drive would."""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    def save(self, name, data, mime_type):
+        raise self.error
+
+    def get(self, key):
+        raise self.error
+
+
+def broken_drive(monkeypatch, error: Exception) -> None:
+    monkeypatch.setattr(
+        attachments_route, "get_storage", lambda session: BrokenDrive(error)
+    )
+
+
+def drive_404() -> HttpError:
+    body = json.dumps({"error": {"message": "File not found: abc"}}).encode()
+    return HttpError(httplib2.Response({"status": 404}), body)
+
+
+def test_drive_error_on_upload_is_502_with_googles_message(
+    client, member, profile_id, monkeypatch
+):
+    broken_drive(monkeypatch, drive_404())
+    response = upload(client, member, profile_id)
+    assert response.status_code == 502
+    assert response.json()["detail"] == (
+        "Couldn't upload the file to Drive: Google error 404: File not found: abc"
+    )
+
+
+def test_drive_error_on_download_is_502(client, member, profile_id, monkeypatch):
+    doc_id = upload(client, member, profile_id).json()["id"]
+    broken_drive(monkeypatch, TimeoutError())
+    response = client.get(f"{BASE}/attachments/{doc_id}/file", headers=member)
+    assert response.status_code == 502
+    assert "Couldn't reach Google" in response.json()["detail"]
+
+
+def test_our_own_bug_is_not_shown_as_a_google_error(
+    client, member, profile_id, monkeypatch
+):
+    broken_drive(monkeypatch, KeyError("oops"))
+    with pytest.raises(KeyError):
+        upload(client, member, profile_id)
 
 
 def test_needs_login(client, profile_id):

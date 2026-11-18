@@ -179,8 +179,11 @@ class TakedownEmailPublic(SQLModel):
     legal_grounds: list[LegalGroundPublic]
     attachments: list[AttachmentPublic]
     status: EmailStatus
+    # how many times sending was tried in total (for display)
     attempts: int
     last_error: str | None
+    # failed, or stuck in "sending": the UI shows a Retry button
+    can_retry: bool
     sent_at: datetime | None
     created_at: datetime
 
@@ -190,3 +193,8 @@ class TakedownEmailPublic(SQLModel):
 class DraftsResult(SQLModel):
     created: list[TakedownEmailPublic]
     updated: list[TakedownEmailPublic]
+
+
+# body of POST /dmca/emails/send
+class EmailsSend(SQLModel):
+    email_ids: list[uuid.UUID] = Field(min_length=1)

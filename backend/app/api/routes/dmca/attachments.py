@@ -1,11 +1,14 @@
 """Attachments API: upload a profile's documents, list them, download one.
 
 Any logged-in user can do everything here. Files go to storage (Google Drive),
-so uploading and downloading need Google connected (409 otherwise).
+so uploading and downloading need Google connected (409 otherwise). If Drive
+itself fails, the route returns 502 with Google's message.
 Documents can't be deleted yet.
 """
 
 import uuid
+from collections.abc import Generator
+from contextlib import contextmanager
 from typing import Annotated
 from urllib.parse import quote
 
@@ -18,21 +21,33 @@ from app.crud.dmca.attachment import (
     get_attachment,
     list_attachments,
 )
-from app.models.dmca.attachment import MAX_ATTACHMENT_BYTES, AttachmentPublic
+from app.models.dmca.attachment import (
+    MAX_ATTACHMENT_BYTES,
+    MAX_ATTACHMENT_MB,
+    AttachmentPublic,
+)
 from app.models.dmca.enums import AttachmentKind
 from app.services.google_auth import GoogleNotConnected
-from app.services.storage import Storage, get_storage
+from app.services.google_errors import GOOGLE_ERRORS, describe
+from app.services.storage import get_storage
 
 router = APIRouter(prefix="/dmca", tags=["dmca"])
 
 
-def storage_or_409(session: SessionDep) -> Storage:
-    """The configured storage, or stop with a 409 if Google isn't connected."""
+@contextmanager
+def drive_errors(action: str) -> Generator[None]:
+    """Turn Google's errors inside the with-block into messages for the UI:
+    409 if Google isn't connected, 502 (Google failed) with Google's message
+    otherwise. Other errors are our bugs and stay a 500."""
     try:
-        return get_storage(session=session)
+        yield
     except GoogleNotConnected as err:
         raise HTTPException(
             status_code=409, detail=f"{err}. An admin can connect it in Config."
+        ) from None
+    except GOOGLE_ERRORS as err:
+        raise HTTPException(
+            status_code=502, detail=f"{action}: {describe(err)}"
         ) from None
 
 
@@ -46,7 +61,8 @@ def upload_attachment(
 ) -> AttachmentPublic:
     """Upload a document to a profile (multipart form: kind + file).
 
-    400 for an empty file, 413 over 20 MB, 409 if Google isn't connected.
+    400 for an empty file, 413 over the size limit, 409 if Google isn't
+    connected, 502 if Drive fails.
     """
     get_profile_or_404(session, profile_id)
     assert current_user.id is not None
@@ -57,12 +73,14 @@ def upload_attachment(
     if not data:
         raise HTTPException(status_code=400, detail="The file is empty")
     if len(data) > MAX_ATTACHMENT_BYTES:
-        raise HTTPException(status_code=413, detail="The file is over 20 MB")
+        raise HTTPException(
+            status_code=413, detail=f"The file is over {MAX_ATTACHMENT_MB} MB"
+        )
 
     file_name = file.filename or "document"
     mime_type = file.content_type or "application/octet-stream"
-    storage = storage_or_409(session)
-    storage_key = storage.save(file_name, data, mime_type)
+    with drive_errors("Couldn't upload the file to Drive"):
+        storage_key = get_storage(session=session).save(file_name, data, mime_type)
 
     attachment = create_attachment(
         session=session,
@@ -97,7 +115,8 @@ def download_attachment(
     attachment = get_attachment(session=session, attachment_id=attachment_id)
     if attachment is None:
         raise HTTPException(status_code=404, detail="Document not found")
-    stored = storage_or_409(session).get(attachment.storage_key)
+    with drive_errors("Couldn't download the file from Drive"):
+        stored = get_storage(session=session).get(attachment.storage_key)
     # filename*= lets non-English names through
     disposition = f"attachment; filename*=UTF-8''{quote(attachment.file_name)}"
     return Response(

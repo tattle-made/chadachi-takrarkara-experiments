@@ -85,8 +85,8 @@ class TakedownEmail(SQLModel, table=True):
     )
     # a copy of the recipient's name, so it's still here if the recipient is deleted
     recipient_name: str = Field(max_length=255)
-    # the step this email is for (website_owner, cdn, ...), used by Escalate to
-    # find the next one. None for a "New email" outside the sequence
+    # the step this email is for (website_owner, cdn, ...): Escalate suggests the
+    # next one. None for a recipient picked by hand
     relation: DomainRelation | None = None
     # which of the recipient's addresses it uses (the review screen's dropdown).
     # None if the recipient has no address yet; to_address is then filled by hand
@@ -105,6 +105,11 @@ class TakedownEmail(SQLModel, table=True):
     gmail_message_id: str | None = Field(default=None, max_length=255)
     rfc822_message_id: str | None = Field(default=None, max_length=255)
     sent_at: datetime | None = Field(
+        default=None, sa_column=Column(sa.DateTime(timezone=True), nullable=True)
+    )
+    # when the counsellor marked "Got a reply" (they check replies in Gmail).
+    # None = no reply marked
+    reply_received_at: datetime | None = Field(
         default=None, sa_column=Column(sa.DateTime(timezone=True), nullable=True)
     )
 
@@ -185,7 +190,25 @@ class TakedownEmailPublic(SQLModel):
     # failed, or stuck in "sending": the UI shows a Retry button
     can_retry: bool
     sent_at: datetime | None
+    reply_received_at: datetime | None
+    # sent over 48 hours ago and no reply marked (the UI shows "No reply · 48h+")
+    no_reply_48h: bool
     created_at: datetime
+
+
+# body of PUT /dmca/emails/{id}/reply-received: mark or unmark "Got a reply"
+class EmailReplyReceived(SQLModel):
+    received: bool
+
+
+# one row of GET /dmca/emails/{id}/escalation: a site in the email, and who to
+# email next about it (a suggestion; the review screen lets them pick anyone)
+class EscalationSuggestion(SQLModel):
+    domain: str
+    # None: nobody further along the chain for this site
+    recipient_id: uuid.UUID | None = None
+    recipient_name: str | None = None
+    relation: DomainRelation | None = None
 
 
 # what POST /dmca/cases/{id}/drafts returns: new drafts, and existing ones that

@@ -4,6 +4,8 @@ Any logged-in user can do everything here. Only drafts can be edited or
 deleted; once an email is queued or sent it's read-only (409 otherwise).
 POST /emails/send hands drafts to the background queue, which sends them one at
 a time; /retry sends a failed (or stuck) one again.
+Once sent, the counsellor can mark "Got a reply" (/reply-received), and Escalate asks
+/escalation who to email next about its sites.
 """
 
 import uuid
@@ -22,6 +24,8 @@ from app.crud.dmca.takedown_email import (
     list_by_ids,
     list_takedown_emails,
     mark_queued,
+    set_reply_received,
+    suggest_escalation,
     to_public,
     update_takedown_email,
 )
@@ -29,7 +33,9 @@ from app.models.dmca.enums import EmailStatus, GoogleConnectionStatus
 from app.models.dmca.takedown_email import (
     DraftsCreate,
     DraftsResult,
+    EmailReplyReceived,
     EmailsSend,
+    EscalationSuggestion,
     TakedownEmail,
     TakedownEmailPublic,
     TakedownEmailUpdate,
@@ -104,9 +110,13 @@ def get_emails(
     _: CurrentUserDep,
     case_id: uuid.UUID | None = None,
     status: EmailStatus | None = None,
+    no_reply_48h: bool = False,
 ) -> list[TakedownEmailPublic]:
-    """List emails, newest first. ?case_id= for one case, ?status= e.g. draft."""
-    emails = list_takedown_emails(session=session, case_id=case_id, status=status)
+    """List emails, newest first. ?case_id= for one case, ?status= e.g. draft,
+    ?no_reply_48h=true for sent ones with no reply after 48 hours."""
+    emails = list_takedown_emails(
+        session=session, case_id=case_id, status=status, no_reply_48h=no_reply_48h
+    )
     return [to_public(e) for e in emails]
 
 
@@ -154,6 +164,15 @@ def delete_one_email(
 
 
 # --- sending ---
+
+
+def ensure_sent(email: TakedownEmail) -> None:
+    """Stop with a 409 unless the email has been sent."""
+    if email.status != EmailStatus.sent:
+        raise HTTPException(
+            status_code=409,
+            detail=f"The email to {email.recipient_name} hasn't been sent yet",
+        )
 
 
 def ensure_google_connected(session: SessionDep) -> None:
@@ -228,3 +247,29 @@ def retry_email(
     ensure_google_connected(session)
     queue_or_503(session, [email])
     return to_public(email)
+
+
+@router.put("/emails/{email_id}/reply-received", response_model=TakedownEmailPublic)
+def mark_reply_received(
+    session: SessionDep,
+    _: CurrentUserDep,
+    email_id: uuid.UUID,
+    body: EmailReplyReceived,
+) -> TakedownEmailPublic:
+    """Mark "Got a reply" ({"received": true}) or unmark it (false). Sent emails
+    only (409 otherwise)."""
+    email = get_email_or_404(session, email_id)
+    ensure_sent(email)
+    set_reply_received(session=session, email=email, received=body.received)
+    return to_public(email)
+
+
+@router.get("/emails/{email_id}/escalation", response_model=list[EscalationSuggestion])
+def get_escalation(
+    session: SessionDep, _: CurrentUserDep, email_id: uuid.UUID
+) -> list[EscalationSuggestion]:
+    """Who to email next about each site in this email, to pre-fill the review
+    screen. Any sent email, with a reply or not (409 otherwise)."""
+    email = get_email_or_404(session, email_id)
+    ensure_sent(email)
+    return suggest_escalation(session=session, email=email)

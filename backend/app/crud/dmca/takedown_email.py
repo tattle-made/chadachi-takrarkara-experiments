@@ -18,10 +18,12 @@ from app.models.dmca.attachment import (
 )
 from app.models.dmca.case import Case, CaseLink, CaseLinkPublic
 from app.models.dmca.enums import DomainRelation, EmailStatus, EmailType
+from app.crud.dmca.recipient import resolve_domains
 from app.models.dmca.legal_ground import LegalGround, LegalGroundPublic
 from app.models.dmca.recipient import Recipient
 from app.models.dmca.takedown_email import (
     DraftItem,
+    EscalationSuggestion,
     TakedownEmail,
     TakedownEmailPublic,
     TakedownEmailUpdate,
@@ -235,13 +237,22 @@ def list_takedown_emails(
     session: Session,
     case_id: uuid.UUID | None = None,
     status: EmailStatus | None = None,
+    no_reply_48h: bool = False,
 ) -> list[TakedownEmail]:
-    """Newest first, optionally for one case and/or one status."""
+    """Newest first, optionally for one case, one status, and/or only the
+    ones with no reply 48 hours after sending."""
     query = select(TakedownEmail).order_by(col(TakedownEmail.created_at).desc())
     if case_id is not None:
         query = query.where(TakedownEmail.case_id == case_id)
     if status is not None:
         query = query.where(TakedownEmail.status == status)
+    if no_reply_48h:
+        # the same rule as no_reply_48h() below, in SQL
+        query = query.where(
+            TakedownEmail.status == EmailStatus.sent,
+            col(TakedownEmail.reply_received_at).is_(None),
+            col(TakedownEmail.sent_at) < datetime.now(timezone.utc) - NO_REPLY_AFTER,
+        )
     return list(session.exec(query))
 
 
@@ -270,6 +281,23 @@ def generated_body(email: TakedownEmail) -> str:
 
 # a send takes seconds; "sending" for longer means the app stopped mid-send
 STUCK_SENDING_AFTER = timedelta(minutes=10)
+# Rati waits this long for a reply before a reminder or escalating
+NO_REPLY_AFTER = timedelta(hours=48)
+# who to email next when a site doesn't act, as Rati works:
+# website admin > Cloudflare (CDN) > host > registrar
+ESCALATION_ORDER = [
+    DomainRelation.website_owner,
+    DomainRelation.cdn,
+    DomainRelation.host,
+    DomainRelation.registrar,
+]
+
+
+def _age(moment: datetime) -> timedelta:
+    """How long ago it was."""
+    if moment.tzinfo is None:  # SQLite (tests) drops the timezone
+        moment = moment.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc) - moment
 
 
 def can_retry(email: TakedownEmail) -> bool:
@@ -278,10 +306,18 @@ def can_retry(email: TakedownEmail) -> bool:
         return True
     if email.status != EmailStatus.sending:
         return False
-    updated = email.updated_at
-    if updated.tzinfo is None:  # SQLite (tests) drops the timezone
-        updated = updated.replace(tzinfo=timezone.utc)
-    return datetime.now(timezone.utc) - updated > STUCK_SENDING_AFTER
+    return _age(email.updated_at) > STUCK_SENDING_AFTER
+
+
+def no_reply_48h(email: TakedownEmail) -> bool:
+    """Sent over 48 hours ago and nobody marked a reply. A status shown in the
+    UI only; nothing happens on its own."""
+    return (
+        email.status == EmailStatus.sent
+        and email.reply_received_at is None
+        and email.sent_at is not None
+        and _age(email.sent_at) > NO_REPLY_AFTER
+    )
 
 
 def to_public(email: TakedownEmail) -> TakedownEmailPublic:
@@ -311,6 +347,8 @@ def to_public(email: TakedownEmail) -> TakedownEmailPublic:
         last_error=email.last_error,
         can_retry=can_retry(email),
         sent_at=email.sent_at,
+        reply_received_at=email.reply_received_at,
+        no_reply_48h=no_reply_48h(email),
         created_at=email.created_at,
     )
 
@@ -409,3 +447,61 @@ def delete_takedown_email(*, session: Session, db_email: TakedownEmail) -> None:
     # the link table rows go with it (ondelete CASCADE / the relationship)
     session.delete(db_email)
     session.commit()
+
+
+def set_reply_received(
+    *, session: Session, email: TakedownEmail, received: bool
+) -> None:
+    """Mark "Got a reply" (stamped now), or unmark it."""
+    email.reply_received_at = datetime.now(timezone.utc) if received else None
+    session.add(email)
+    session.commit()
+    session.refresh(email)
+
+
+def suggest_escalation(
+    *, session: Session, email: TakedownEmail
+) -> list[EscalationSuggestion]:
+    """For each site in the email, who to email next: the first recipient the
+    site has further along ESCALATION_ORDER than this email's step.
+
+    The step is this recipient's relation to the site (an email to Cloudflare
+    can cover several sites), else the email's own relation, else none known,
+    and then the chain starts from the beginning. A suggestion only: the review
+    screen lets the counsellor pick anyone, including the same recipient again.
+    """
+    domains = sorted({link.domain for link in email.links})
+    suggestions = []
+    for site in resolve_domains(session=session, names=domains):
+        step = next(
+            (
+                link.relation
+                for link in site.recipient_links
+                if link.recipient.id == email.recipient_id
+            ),
+            email.relation,
+        )
+        later = (
+            ESCALATION_ORDER[ESCALATION_ORDER.index(step) + 1 :]
+            if step is not None
+            else ESCALATION_ORDER
+        )
+        # the first later step this site has someone for
+        found = next(
+            (
+                link
+                for relation in later
+                for link in site.recipient_links
+                if link.relation == relation
+            ),
+            None,
+        )
+        suggestions.append(
+            EscalationSuggestion(
+                domain=site.domain,
+                recipient_id=found.recipient.id if found else None,
+                recipient_name=found.recipient.name if found else None,
+                relation=found.relation if found else None,
+            )
+        )
+    return suggestions

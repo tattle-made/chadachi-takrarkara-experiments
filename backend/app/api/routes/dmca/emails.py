@@ -75,19 +75,20 @@ def create_case_drafts(
 ) -> DraftsResult:
     """Create draft emails from the review screen (also used by Escalate).
 
-    Body: {"items": [{"domain": "example-site.com", "recipient_id": "...",
-                      "email_type": "dmca", "relation": "cdn",
-                      "add_to_email_id": null}, ...]}
-    Without add_to_email_id: one new draft per recipient + email type, covering
-    its domains' links. Each starts with the address picked from the
-    recipient's emails, a subject built from its domains, and the default legal
-    grounds.
+    Body: {"items": [{"domain": "example-site.com", "link_ids": ["..."],
+                      "recipient_id": "...", "email_type": "dmca",
+                      "relation": "cdn", "add_to_email_id": null}, ...]}
+    Without add_to_email_id: one new draft per recipient + email type, with
+    exactly the rows' links (never other links on the same domain). Each starts
+    with the address picked from the recipient's emails, a subject built from
+    its domains, and the default legal grounds.
     With add_to_email_id: the links go into that existing draft instead, and its
     body is reset to the template.
 
     Links marked removed are left out. Returns {"created": [...], "updated": [...]}.
-    400 if a recipient doesn't exist or lacks the chosen type, the draft to add
-    to can't be used, or there are no links to send.
+    400 if a recipient doesn't exist or lacks the chosen type, a link isn't in
+    this case or on the row's domain, the draft to add to can't be used, or
+    there are no links to send.
     """
     case = get_case_or_404(session, case_id)
     assert current_user.id is not None

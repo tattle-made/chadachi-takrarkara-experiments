@@ -79,7 +79,7 @@ class _Group:
     to_address: str | None
     # the draft to add the links to, or None to make a new one
     existing: TakedownEmail | None
-    domains: set[str] = field(default_factory=set)
+    link_ids: set[uuid.UUID] = field(default_factory=set)
     relations: set[DomainRelation | None] = field(default_factory=set)
 
 
@@ -114,15 +114,18 @@ def create_drafts(
 ) -> tuple[list[TakedownEmail], list[TakedownEmail]]:
     """Turn the review screen's rows into draft emails. Returns (created, updated).
 
-    Each row says "send this domain's links to this recipient". Rows for the same
-    recipient + address type become one new email covering all their domains.
+    Each row says "send these links (link_ids, all on one domain) to this
+    recipient". A draft gets exactly the rows' links, never other links on the
+    same domain: each email is its own record of what was sent. Rows for the
+    same recipient + address type become one new email.
     A row with add_to_email_id adds its links to that existing draft instead; an
     edited body there is reset so the new links show up in it.
 
-    Links marked removed are left out. Links already emailed are not: sending
-    one again is allowed (the review screen warns about it). Escalate uses the
-    same call with the next recipient.
+    DraftError if a link isn't in this case or isn't on the row's domain. Links
+    marked removed are left out. Sending a link again is allowed (Escalate and
+    reminders do it).
     """
+    case_links = {link.id: link for link in case.links}
     pending = [link for link in _sorted_links(case.links) if link.removed_at is None]
 
     # load every recipient the rows mention, in one query
@@ -161,9 +164,17 @@ def create_drafts(
                 ) from None
             email_type, address = picked if picked else (None, None)
 
+        domain = item.domain.strip().lower()
+        for link_id in item.link_ids:
+            link = case_links.get(link_id)
+            if link is None:
+                raise DraftError("Some of the links aren't in this case")
+            if link.domain != domain:
+                raise DraftError(f"{link.url} isn't on {domain}")
+
         key = (recipient.id, email_type, item.add_to_email_id)
         group = groups.setdefault(key, _Group(recipient, email_type, address, existing))
-        group.domains.add(item.domain.strip().lower())
+        group.link_ids.update(item.link_ids)
         group.relations.add(item.relation)
 
     grounds = default_legal_grounds(session=session, is_minor=case.is_minor)
@@ -176,7 +187,7 @@ def create_drafts(
         links = [
             link
             for link in pending
-            if link.domain in group.domains and link.id not in skip
+            if link.id in group.link_ids and link.id not in skip
         ]
         if not links:
             continue

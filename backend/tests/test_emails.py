@@ -93,8 +93,21 @@ def setup(client, admin, member):
 
 
 def drafts(client, headers, case_id, items):
+    """POST /drafts. A row without link_ids gets every link the case has on its
+    domain, so most tests don't have to look the ids up."""
+    case = client.get(f"{BASE}/cases/{case_id}", headers=headers).json()
+    links = case.get("links", [])  # none for an unknown case
+
+    def with_links(item):
+        if "link_ids" in item:
+            return item
+        on_domain = [link["id"] for link in links if link["domain"] == item["domain"]]
+        return {**item, "link_ids": on_domain}
+
     return client.post(
-        f"{BASE}/cases/{case_id}/drafts", json={"items": items}, headers=headers
+        f"{BASE}/cases/{case_id}/drafts",
+        json={"items": [with_links(item) for item in items]},
+        headers=headers,
     )
 
 
@@ -200,9 +213,91 @@ def test_removed_links_are_left_out(client, session: Session, member, setup):
     assert [link["url"] for link in draft["links"]] == ["site-a.test/2"]
 
 
-def test_domain_with_no_links_is_400(client, member, setup):
-    item = {"domain": "nothing.test", "recipient_id": setup["cf"]}
-    assert drafts(client, member, setup["case"], [item]).status_code == 400
+def test_row_without_links_is_422(client, member, setup):
+    item = {"domain": "nothing.test", "link_ids": [], "recipient_id": setup["cf"]}
+    assert drafts(client, member, setup["case"], [item]).status_code == 422
+
+
+def case_links(client, member, case_id) -> dict[str, str]:
+    """{url: link id} for a case's links."""
+    case = client.get(f"{BASE}/cases/{case_id}", headers=member).json()
+    return {link["url"]: link["id"] for link in case["links"]}
+
+
+def link_urls(email) -> list[str]:
+    return [link["url"] for link in email["links"]]
+
+
+def test_only_the_given_links_go_in(client, member, setup):
+    # a new link found later on the same site gets its own email, without the
+    # links already emailed
+    links = case_links(client, member, setup["case"])
+    [a1] = [u for u in links if u.endswith("site-a.test/1")]
+    [a2] = [u for u in links if u.endswith("site-a.test/2")]
+    row = {"domain": "site-a.test", "recipient_id": setup["cf"]}
+
+    [first] = created(client, member, setup["case"], [{**row, "link_ids": [links[a1]]}])
+    [second] = created(
+        client, member, setup["case"], [{**row, "link_ids": [links[a2]]}]
+    )
+    assert link_urls(first) == [a1]
+    assert link_urls(second) == [a2]
+    assert first["id"] != second["id"]
+
+
+def test_link_from_another_case_is_400(client, member, setup):
+    profile = post(client, member, "/profiles", {"full_name": "Someone"})
+    other = post(client, member, f"/profiles/{profile['id']}/cases", {"title": "x"})
+    post(client, member, f"/cases/{other['id']}/links", {"text": "site-a.test/9"})
+    [other_link] = case_links(client, member, other["id"]).values()
+
+    item = {
+        "domain": "site-a.test",
+        "link_ids": [other_link],
+        "recipient_id": setup["cf"],
+    }
+    response = drafts(client, member, setup["case"], [item])
+    assert response.status_code == 400
+    assert "aren't in this case" in response.json()["detail"]
+
+
+def test_link_on_another_domain_is_400(client, member, setup):
+    links = case_links(client, member, setup["case"])
+    [b1] = [i for u, i in links.items() if "site-b.test" in u]
+    item = {"domain": "site-a.test", "link_ids": [b1], "recipient_id": setup["cf"]}
+    response = drafts(client, member, setup["case"], [item])
+    assert response.status_code == 400
+    assert "isn't on site-a.test" in response.json()["detail"]
+
+
+def test_add_to_draft_adds_only_the_given_links(client, member, setup):
+    links = case_links(client, member, setup["case"])
+    [a1] = [u for u in links if u.endswith("site-a.test/1")]
+    [c1] = [u for u in links if "site-c.test" in u]
+    [draft] = created(
+        client,
+        member,
+        setup["case"],
+        [
+            {
+                "domain": "site-a.test",
+                "link_ids": [links[a1]],
+                "recipient_id": setup["cf"],
+            }
+        ],
+    )
+
+    item = {
+        "domain": "site-c.test",
+        "link_ids": [links[c1]],
+        "recipient_id": setup["cf"],
+        "add_to_email_id": draft["id"],
+    }
+    response = drafts(client, member, setup["case"], [item])
+    assert response.status_code == 200, response.text
+    [updated] = response.json()["updated"]
+    # site-a.test/2 stays out: only the links named go in
+    assert sorted(link_urls(updated)) == sorted([a1, c1])
 
 
 def test_unknown_recipient_is_400(client, member, setup):
@@ -220,7 +315,11 @@ def test_recipient_without_emails_gets_empty_address(client, admin, member, setu
 
 
 def test_unknown_case_is_404(client, member, setup):
-    item = {"domain": "site-a.test", "recipient_id": setup["cf"]}
+    item = {
+        "domain": "site-a.test",
+        "link_ids": [str(uuid.uuid4())],
+        "recipient_id": setup["cf"],
+    }
     assert drafts(client, member, uuid.uuid4(), [item]).status_code == 404
 
 

@@ -135,9 +135,13 @@ class TakedownEmail(SQLModel, table=True):
 
 
 class DraftItem(SQLModel):
-    """One row of the review screen: send this domain's links to this recipient."""
+    """One row of the review screen: send these links (all on this domain) to
+    this recipient."""
 
     domain: str
+    # exactly the links this row sends, e.g. the ones just pasted, or the ones
+    # in the email being escalated. Other links on the domain are left alone
+    link_ids: list[uuid.UUID] = Field(min_length=1)
     recipient_id: uuid.UUID
     # the dropdown's choice. Left out = the default order (dmca -> abuse ->
     # general, or csam -> dmca -> abuse -> general for a minor case)

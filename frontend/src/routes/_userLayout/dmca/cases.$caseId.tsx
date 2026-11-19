@@ -8,7 +8,7 @@ import { btnSecondary, cardClass, formatDate } from "@/preview/components/ui"
 import { usePreviewStore } from "@/preview/store"
 
 export const Route = createFileRoute(
-  "/_userLayout/dmca-ui-preview/cases/$caseId",
+  "/_userLayout/dmca/cases/$caseId",
 )({
   component: CasePage,
 })
@@ -25,7 +25,7 @@ function CasePage() {
     return (
       <p className="text-sm text-slate-500">
         Case not found.{" "}
-        <Link to="/dmca-ui-preview" className="underline">
+        <Link to="/dmca" className="underline">
           Back to profiles
         </Link>
       </p>
@@ -39,7 +39,7 @@ function CasePage() {
     <div className="space-y-8">
       <div>
         <Link
-          to="/dmca-ui-preview/profiles/$profileId"
+          to="/dmca/profiles/$profileId"
           params={{ profileId: profile.id }}
           className="mb-3 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900"
         >

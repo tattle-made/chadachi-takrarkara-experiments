@@ -6,7 +6,7 @@ import { usePreviewStore } from "@/preview/store"
 import { SENDER_EMAIL } from "@/preview/template"
 import type { EmailStatus } from "@/preview/types"
 
-export const Route = createFileRoute("/_userLayout/dmca-ui-preview/outbox")({
+export const Route = createFileRoute("/_userLayout/dmca/outbox")({
   component: OutboxPage,
 })
 

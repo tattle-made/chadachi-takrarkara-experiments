@@ -12,7 +12,7 @@ import {
 import { usePreviewStore } from "@/preview/store"
 
 export const Route = createFileRoute(
-  "/_userLayout/dmca-ui-preview/profiles/$profileId",
+  "/_userLayout/dmca/profiles/$profileId",
 )({
   component: ProfilePage,
 })
@@ -26,7 +26,7 @@ function ProfilePage() {
     return (
       <p className="text-sm text-slate-500">
         Profile not found.{" "}
-        <Link to="/dmca-ui-preview" className="underline">
+        <Link to="/dmca" className="underline">
           Back to profiles
         </Link>
       </p>
@@ -41,7 +41,7 @@ function ProfilePage() {
     <div className="space-y-10">
       <div>
         <Link
-          to="/dmca-ui-preview"
+          to="/dmca"
           className="mb-3 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900"
         >
           <ArrowLeft className="size-4" />
@@ -60,7 +60,7 @@ function ProfilePage() {
             )}
           </div>
           <Link
-            to="/dmca-ui-preview/cases/new"
+            to="/dmca/cases/new"
             search={{ profileId: profile.id }}
             className={`${btnPrimary} inline-flex items-center gap-2`}
           >
@@ -107,7 +107,7 @@ function ProfilePage() {
                     >
                       <td className={tdClass}>
                         <Link
-                          to="/dmca-ui-preview/cases/$caseId"
+                          to="/dmca/cases/$caseId"
                           params={{ caseId: c.id }}
                           className="font-medium text-slate-900 hover:underline"
                         >

@@ -14,7 +14,7 @@ import {
 } from "@/preview/components/ui"
 import { usePreviewStore } from "@/preview/store"
 
-export const Route = createFileRoute("/_userLayout/dmca-ui-preview/")({
+export const Route = createFileRoute("/_userLayout/dmca/")({
   component: ProfilesPage,
 })
 
@@ -44,7 +44,7 @@ function ProfilesPage() {
     const id = state.addProfile({ fullName: fullName.trim(), notes })
     handleOpenChange(false)
     navigate({
-      to: "/dmca-ui-preview/profiles/$profileId",
+      to: "/dmca/profiles/$profileId",
       params: { profileId: id },
     })
   }
@@ -159,7 +159,7 @@ function ProfilesPage() {
                   >
                     <td className={tdClass}>
                       <Link
-                        to="/dmca-ui-preview/profiles/$profileId"
+                        to="/dmca/profiles/$profileId"
                         params={{ profileId: p.id }}
                         className="font-medium text-slate-900 hover:underline"
                       >

@@ -30,7 +30,7 @@ export function ProfileDocsNote({ profileId }: { profileId: string }) {
           : `${count} ${count === 1 ? "document" : "documents"} on ${profile.fullName}'s profile.`}{" "}
         Choose which to attach on each email.{" "}
         <Link
-          to="/dmca-ui-preview/profiles/$profileId"
+          to="/dmca/profiles/$profileId"
           params={{ profileId }}
           className="underline underline-offset-2 hover:text-slate-900"
         >

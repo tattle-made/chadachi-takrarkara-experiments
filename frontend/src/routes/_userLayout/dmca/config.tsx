@@ -17,7 +17,7 @@ import { usePreviewStore } from "@/preview/store"
 import { extractDomain } from "@/preview/template"
 import type { RecipientKind } from "@/preview/types"
 
-export const Route = createFileRoute("/_userLayout/dmca-ui-preview/config")({
+export const Route = createFileRoute("/_userLayout/dmca/config")({
   component: ConfigPage,
 })
 

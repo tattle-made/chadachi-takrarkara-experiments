@@ -138,7 +138,7 @@ export function EmailList({
                       <td className={tdClass}>
                         {caseItem && (
                           <Link
-                            to="/dmca-ui-preview/cases/$caseId"
+                            to="/dmca/cases/$caseId"
                             params={{ caseId: caseItem.id }}
                             className="text-slate-700 hover:underline"
                           >

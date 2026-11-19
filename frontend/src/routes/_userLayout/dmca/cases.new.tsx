@@ -11,7 +11,7 @@ import {
 } from "@/preview/components/ui"
 import { usePreviewStore } from "@/preview/store"
 
-export const Route = createFileRoute("/_userLayout/dmca-ui-preview/cases/new")({
+export const Route = createFileRoute("/_userLayout/dmca/cases/new")({
   validateSearch: (search: Record<string, unknown>) => ({
     profileId: String(search.profileId ?? ""),
   }),
@@ -31,7 +31,7 @@ function NewCasePage() {
     return (
       <p className="text-sm text-slate-500">
         Pick a profile first.{" "}
-        <Link to="/dmca-ui-preview" className="underline">
+        <Link to="/dmca" className="underline">
           Back to profiles
         </Link>
       </p>
@@ -48,7 +48,7 @@ function NewCasePage() {
     <div className="space-y-6">
       <div>
         <Link
-          to="/dmca-ui-preview/profiles/$profileId"
+          to="/dmca/profiles/$profileId"
           params={{ profileId }}
           className="mb-3 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900"
         >
@@ -111,7 +111,7 @@ function NewCasePage() {
             caseId={caseId}
             onDone={() =>
               navigate({
-                to: "/dmca-ui-preview/cases/$caseId",
+                to: "/dmca/cases/$caseId",
                 params: { caseId },
               })
             }

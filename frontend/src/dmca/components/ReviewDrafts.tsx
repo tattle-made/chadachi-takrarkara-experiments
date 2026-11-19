@@ -167,8 +167,17 @@ function ReviewTable({
   const siteOf = (domain: string) =>
     resolved.find((s) => s.domain === domain)?.recipient_links ?? []
   const recipientOf = (id: string) => recipients.find((r) => r.id === id)
-  const draftsTo = (recipientId: string) =>
-    emails.filter((e) => e.status === "draft" && e.recipient_id === recipientId)
+  // this case's drafts to the same recipient and address type
+  const draftsTo = (recipientId: string, emailType: EmailType | null) =>
+    emails.filter(
+      (e) =>
+        e.status === "draft" &&
+        e.recipient_id === recipientId &&
+        e.email_type === emailType,
+    )
+  // add to an unedited draft if there is one (adding resets an edited body)
+  const defaultDraft = (recipientId: string, emailType: EmailType | null) =>
+    draftsTo(recipientId, emailType).find((d) => !d.is_body_custom)?.id ?? ""
 
   /** Set a row's recipient, and the address type and draft that go with it. */
   const withRecipient = (
@@ -177,16 +186,15 @@ function ReviewTable({
     relation: DomainRelation | null,
   ): Row => {
     const types = typesOf(recipientOf(recipientId))
-    // add to an unedited draft if there is one (adding resets an edited body)
-    const addTo = draftsTo(recipientId).find((d) => !d.is_body_custom)?.id ?? ""
+    const emailType =
+      (isMinor ? MINOR_TYPES : ADULT_TYPES).find((t) => types.includes(t)) ??
+      null
     return {
       ...row,
       recipientId,
       relation,
-      emailType:
-        (isMinor ? MINOR_TYPES : ADULT_TYPES).find((t) => types.includes(t)) ??
-        null,
-      addTo,
+      emailType,
+      addTo: defaultDraft(recipientId, emailType),
     }
   }
 
@@ -275,7 +283,9 @@ function ReviewTable({
               const site = siteOf(row.domain)
               const onSite = new Set(site.map((l) => l.recipient.id))
               const types = typesOf(recipientOf(row.recipientId))
-              const drafts = row.recipientId ? draftsTo(row.recipientId) : []
+              const drafts = row.recipientId
+                ? draftsTo(row.recipientId, row.emailType)
+                : []
               const target = drafts.find((d) => d.id === row.addTo)
               // links of this row the chosen draft already has
               const inTarget = target
@@ -349,10 +359,15 @@ function ReviewTable({
                       <select
                         value={row.emailType ?? ""}
                         onChange={(e) =>
-                          update(row.domain, (r) => ({
-                            ...r,
-                            emailType: e.target.value as EmailType,
-                          }))
+                          update(row.domain, (r) => {
+                            // a different address means a different draft
+                            const emailType = e.target.value as EmailType
+                            return {
+                              ...r,
+                              emailType,
+                              addTo: defaultDraft(r.recipientId, emailType),
+                            }
+                          })
                         }
                         aria-label={`Address type for ${row.domain}`}
                         className={inputBase}

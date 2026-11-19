@@ -92,11 +92,21 @@ function PasteResult({ result }: { result: LinksAdded }) {
         </p>
       )}
       {result.skipped.length > 0 && (
-        <p className="text-slate-500">
-          {result.skipped.length}{" "}
-          {result.skipped.length === 1 ? "link was" : "links were"} already in
-          the case.
-        </p>
+        <div className="rounded-md bg-slate-50 px-3 py-2 text-slate-600">
+          <p>Already in this case:</p>
+          <ul className="my-1 list-disc pl-5">
+            {result.skipped.map((u) => (
+              <li key={u} className="break-all">
+                {u}
+              </li>
+            ))}
+          </ul>
+          <p>
+            They may already be in other emails (drafts or sent). You can still
+            put them in new drafts below. Adding them to a draft that already
+            has them won't add them twice.
+          </p>
+        </div>
       )}
       {result.invalid.map((u) => (
         <p key={u} className="text-red-600">

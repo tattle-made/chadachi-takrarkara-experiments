@@ -88,6 +88,7 @@ class ProfileSummary(SQLModel):
     id: uuid.UUID
     full_name: str
     display_name: str | None
+    created_at: datetime
 
 
 class ProfilesPublic(SQLModel):

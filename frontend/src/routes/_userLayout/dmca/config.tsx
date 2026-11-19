@@ -12,7 +12,7 @@ import {
   labelClass,
   tdClass,
   thClass,
-} from "@/preview/components/ui"
+} from "@/dmca/ui"
 import { usePreviewStore } from "@/preview/store"
 import { extractDomain } from "@/preview/template"
 import type { RecipientKind } from "@/preview/types"

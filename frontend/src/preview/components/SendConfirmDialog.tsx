@@ -1,7 +1,7 @@
 import * as Dialog from "@radix-ui/react-dialog"
 import { AlertTriangle } from "lucide-react"
 import type { Recipient, TakedownEmail } from "../types"
-import { btnPrimary, btnSecondary } from "./ui"
+import { btnPrimary, btnSecondary } from "@/dmca/ui"
 
 export function SendConfirmDialog({
   emails,

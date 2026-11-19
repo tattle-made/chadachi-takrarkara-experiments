@@ -12,7 +12,7 @@ import {
   inputClass,
   tdClass,
   thClass,
-} from "./ui"
+} from "@/dmca/ui"
 
 type DomainRow = {
   domain: string

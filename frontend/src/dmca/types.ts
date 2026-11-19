@@ -32,6 +32,7 @@ export type ProfileSummary = {
   id: string
   full_name: string
   display_name: string | null
+  created_at: string
 }
 
 export type ProfileInput = {
@@ -51,7 +52,6 @@ export type ProfileCase = {
 
 export type ProfileDetail = ProfileSummary & {
   notes: string | null
-  created_at: string
   cases: ProfileCase[]
 }
 

@@ -6,7 +6,7 @@ import type { TakedownEmail } from "../types"
 import { EmailDraftCard } from "./EmailDraftCard"
 import { SendConfirmDialog } from "./SendConfirmDialog"
 import { KindBadge, StatusBadge } from "./StatusBadge"
-import { btnPrimary, cardClass, formatDate, tdClass, thClass } from "./ui"
+import { btnPrimary, cardClass, formatDate, tdClass, thClass } from "@/dmca/ui"
 
 // Select-and-send table shared by the case page, profile page and outbox.
 // Only drafts can be selected; sent emails are locked, failed ones get Retry.

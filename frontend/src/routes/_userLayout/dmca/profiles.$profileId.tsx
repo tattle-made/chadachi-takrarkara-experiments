@@ -1,27 +1,28 @@
+import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { ArrowLeft, Plus } from "lucide-react"
-import { DocumentsPanel } from "@/preview/components/DocumentsPanel"
-import { EmailList } from "@/preview/components/EmailList"
+import { DocumentsPanel } from "@/dmca/components/DocumentsPanel"
+import { ProfileFormDialog } from "@/dmca/components/ProfileFormDialog"
 import {
   btnPrimary,
+  btnSecondary,
   cardClass,
   formatDate,
   tdClass,
   thClass,
-} from "@/preview/components/ui"
-import { usePreviewStore } from "@/preview/store"
+} from "@/dmca/ui"
+import { profileQueryOptions } from "@/queries/dmca/profiles.query"
 
-export const Route = createFileRoute(
-  "/_userLayout/dmca/profiles/$profileId",
-)({
+export const Route = createFileRoute("/_userLayout/dmca/profiles/$profileId")({
   component: ProfilePage,
 })
 
+/** One person: their details, documents and cases. */
 function ProfilePage() {
   const { profileId } = Route.useParams()
-  const state = usePreviewStore()
-  const profile = state.profiles.find((p) => p.id === profileId)
+  const { data: profile, isPending } = useQuery(profileQueryOptions(profileId))
 
+  if (isPending) return <p className="text-sm text-slate-400">Loading…</p>
   if (!profile) {
     return (
       <p className="text-sm text-slate-500">
@@ -32,10 +33,6 @@ function ProfilePage() {
       </p>
     )
   }
-
-  const cases = state.cases.filter((c) => c.profileId === profile.id)
-  const caseIds = cases.map((c) => c.id)
-  const emails = state.emails.filter((e) => caseIds.includes(e.caseId))
 
   return (
     <div className="space-y-10">
@@ -50,23 +47,36 @@ function ProfilePage() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-xl font-semibold text-slate-900">
-              {profile.fullName}
+              {profile.full_name}
             </h1>
             <p className="mt-0.5 text-sm text-slate-500">
-              Created {formatDate(profile.createdAt)}
+              {profile.display_name && <>Shown as {profile.display_name} · </>}
+              Created {formatDate(profile.created_at)}
             </p>
             {profile.notes && (
-              <p className="mt-2 text-sm text-slate-600">{profile.notes}</p>
+              <p className="mt-2 whitespace-pre-line text-sm text-slate-600">
+                {profile.notes}
+              </p>
             )}
           </div>
-          <Link
-            to="/dmca/cases/new"
-            search={{ profileId: profile.id }}
-            className={`${btnPrimary} inline-flex items-center gap-2`}
-          >
-            <Plus className="size-4" />
-            New case
-          </Link>
+          <div className="flex items-center gap-2">
+            <ProfileFormDialog
+              profile={profile}
+              trigger={
+                <button type="button" className={btnSecondary}>
+                  Edit
+                </button>
+              }
+            />
+            <Link
+              to="/dmca/cases/new"
+              search={{ profileId: profile.id }}
+              className={`${btnPrimary} inline-flex items-center gap-2`}
+            >
+              <Plus className="size-4" />
+              New case
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -79,7 +89,7 @@ function ProfilePage() {
 
       <section>
         <h2 className="mb-3 text-base font-semibold text-slate-900">Cases</h2>
-        {cases.length === 0 ? (
+        {profile.cases.length === 0 ? (
           <p className="text-sm text-slate-400">
             No cases yet. Create one to start drafting takedown emails.
           </p>
@@ -89,54 +99,42 @@ function ProfilePage() {
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50">
                   <th className={thClass}>Case</th>
-                  <th className={thClass}>Links</th>
-                  <th className={thClass}>Emails</th>
+                  <th className={thClass}>Assigned to</th>
                   <th className={thClass}>Created</th>
                 </tr>
               </thead>
               <tbody>
-                {cases.map((c) => {
-                  const caseEmails = emails.filter((e) => e.caseId === c.id)
-                  const sent = caseEmails.filter(
-                    (e) => e.status === "sent",
-                  ).length
-                  return (
-                    <tr
-                      key={c.id}
-                      className="border-b border-slate-100 last:border-0 hover:bg-slate-50"
-                    >
-                      <td className={tdClass}>
-                        <Link
-                          to="/dmca/cases/$caseId"
-                          params={{ caseId: c.id }}
-                          className="font-medium text-slate-900 hover:underline"
-                        >
-                          {c.title}
-                        </Link>
-                      </td>
-                      <td className={`${tdClass} text-slate-700`}>
-                        {state.links.filter((l) => l.caseId === c.id).length}
-                      </td>
-                      <td className={`${tdClass} text-slate-500`}>
-                        {sent} of {caseEmails.length} sent
-                      </td>
-                      <td className={`${tdClass} text-slate-500`}>
-                        {formatDate(c.createdAt)}
-                      </td>
-                    </tr>
-                  )
-                })}
+                {profile.cases.map((c) => (
+                  <tr
+                    key={c.id}
+                    className="border-b border-slate-100 last:border-0 hover:bg-slate-50"
+                  >
+                    <td className={tdClass}>
+                      <Link
+                        to="/dmca/cases/$caseId"
+                        params={{ caseId: c.id }}
+                        className="font-medium text-slate-900 hover:underline"
+                      >
+                        {c.title}
+                      </Link>
+                      {c.is_minor && (
+                        <span className="ml-2 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-800">
+                          Minor
+                        </span>
+                      )}
+                    </td>
+                    <td className={`${tdClass} text-slate-500`}>
+                      {c.assignee?.email ?? "–"}
+                    </td>
+                    <td className={`${tdClass} text-slate-500`}>
+                      {formatDate(c.created_at)}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         )}
-      </section>
-
-      <section>
-        <h2 className="mb-3 text-base font-semibold text-slate-900">
-          All emails for {profile.fullName}
-        </h2>
-        <EmailList emails={emails} showCase emptyText="No emails yet." />
       </section>
     </div>
   )

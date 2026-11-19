@@ -2,7 +2,7 @@ import { Paperclip } from "lucide-react"
 import { emailView } from "../emailView"
 import { usePreviewStore } from "../store"
 import { attachmentLabel, SENDER_EMAIL, uniqueDomains } from "../template"
-import { btnLink, inputBase, inputClass, labelClass } from "./ui"
+import { btnLink, inputBase, inputClass, labelClass } from "@/dmca/ui"
 
 export function EmailDraftCard({ emailId }: { emailId: string }) {
   const state = usePreviewStore()

@@ -2,9 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import { ArrowLeft, Plus } from "lucide-react"
 import { useState } from "react"
 import { AddLinksFlow } from "@/preview/components/AddLinksFlow"
-import { ProfileDocsNote } from "@/preview/components/DocumentsPanel"
+import { ProfileDocsNote } from "@/dmca/components/DocumentsPanel"
 import { EmailList } from "@/preview/components/EmailList"
-import { btnSecondary, cardClass, formatDate } from "@/preview/components/ui"
+import { btnSecondary, cardClass, formatDate } from "@/dmca/ui"
 import { usePreviewStore } from "@/preview/store"
 
 export const Route = createFileRoute(

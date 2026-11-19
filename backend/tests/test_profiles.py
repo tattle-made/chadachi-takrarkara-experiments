@@ -49,6 +49,7 @@ def test_list_newest_first(client, member):
     body = client.get(URL, headers=member).json()
     assert body["count"] == 2
     assert [p["full_name"] for p in body["data"]] == ["Second", "First"]
+    assert body["data"][0]["created_at"]
 
 
 def test_search_matches_both_names_ignoring_case(client, member):

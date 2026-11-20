@@ -8,6 +8,7 @@ import { toastError } from "@/dmca/errors"
 import type {
   CaseDetail,
   CaseInput,
+  CaseSummary,
   LinksAdded,
   Page,
   ProfileDetail,
@@ -53,6 +54,18 @@ export const caseQueryOptions = (caseId: string) =>
     queryKey: [...CASES, caseId],
     queryFn: async () => {
       const response = await apiClient.get<CaseDetail>(`${API}/cases/${caseId}`)
+      return response.data
+    },
+  })
+
+/** All cases (newest first), e.g. to name each email's case in the outbox. */
+export const casesQueryOptions = () =>
+  queryOptions({
+    queryKey: [...CASES, "list"],
+    queryFn: async () => {
+      const response = await apiClient.get<Page<CaseSummary>>(`${API}/cases`, {
+        params: { limit: 1000 },
+      })
       return response.data
     },
   })

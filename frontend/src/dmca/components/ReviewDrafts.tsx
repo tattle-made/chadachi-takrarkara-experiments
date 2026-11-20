@@ -255,8 +255,10 @@ function ReviewTable({
       onSuccess: ({ created, updated }) => {
         toast.success(
           [
-            created.length && `${created.length} drafts created`,
-            updated.length && `${updated.length} drafts updated`,
+            created.length &&
+              `${created.length} ${created.length === 1 ? "draft" : "drafts"} created`,
+            updated.length &&
+              `${updated.length} ${updated.length === 1 ? "draft" : "drafts"} updated`,
           ]
             .filter(Boolean)
             .join(", "),
@@ -283,6 +285,10 @@ function ReviewTable({
               const site = siteOf(row.domain)
               const onSite = new Set(site.map((l) => l.recipient.id))
               const types = typesOf(recipientOf(row.recipientId))
+              const address = addressOf(
+                recipientOf(row.recipientId),
+                row.emailType,
+              )
               const drafts = row.recipientId
                 ? draftsTo(row.recipientId, row.emailType)
                 : []
@@ -378,6 +384,11 @@ function ReviewTable({
                           </option>
                         ))}
                       </select>
+                    )}
+                    {address && (
+                      <p className="mt-1 break-all text-xs text-slate-500">
+                        {address}
+                      </p>
                     )}
                   </td>
 
@@ -476,6 +487,14 @@ function typesOf(recipient: Recipient | undefined): EmailType[] {
   return TYPE_ORDER.filter((t) =>
     recipient?.emails.some((e) => e.email_type === t),
   )
+}
+
+/** The address the draft goes to: the first one of that type. */
+function addressOf(
+  recipient: Recipient | undefined,
+  emailType: EmailType | null | undefined,
+) {
+  return recipient?.emails.find((e) => e.email_type === emailType)?.address
 }
 
 /** "Add to draft: <address> · <first link> +N more", to tell drafts apart. */

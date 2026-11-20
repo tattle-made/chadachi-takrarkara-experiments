@@ -58,6 +58,13 @@ export function CaseLinks({ caseItem, emails, onAdd, onDraft }: Props) {
         </div>
       </div>
 
+      {caseItem.links.length > 0 && (
+        <p className="-mt-1 mb-3 text-xs text-slate-500">
+          Every link pasted into this case. × removes a link from the case and
+          from its drafts. Links in sent emails stay.
+        </p>
+      )}
+
       {caseItem.links.length === 0 ? (
         <p className="text-sm text-slate-400">
           No links yet. Add the links to take down.

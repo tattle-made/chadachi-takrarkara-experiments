@@ -1,7 +1,8 @@
-import { useQuery } from "@tanstack/react-query"
+import { useQueries, useQuery } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { ArrowLeft, Plus } from "lucide-react"
 import { DocumentsPanel } from "@/dmca/components/DocumentsPanel"
+import { EmailList } from "@/dmca/components/EmailList"
 import { ProfileFormDialog } from "@/dmca/components/ProfileFormDialog"
 import {
   btnPrimary,
@@ -11,16 +12,27 @@ import {
   tdClass,
   thClass,
 } from "@/dmca/ui"
+import { emailsQueryOptions } from "@/queries/dmca/emails.query"
 import { profileQueryOptions } from "@/queries/dmca/profiles.query"
 
 export const Route = createFileRoute("/_userLayout/dmca/profiles/$profileId")({
   component: ProfilePage,
 })
 
-/** One person: their details, documents and cases. */
+/** One person: their details, documents, cases, and all their emails. */
 function ProfilePage() {
   const { profileId } = Route.useParams()
   const { data: profile, isPending } = useQuery(profileQueryOptions(profileId))
+  // each case's emails, put together newest first
+  const emails = useQueries({
+    queries: (profile?.cases ?? []).map((c) =>
+      emailsQueryOptions({ case_id: c.id }),
+    ),
+    combine: (results) =>
+      results
+        .flatMap((r) => r.data ?? [])
+        .sort((a, b) => b.created_at.localeCompare(a.created_at)),
+  })
 
   if (isPending) return <p className="text-sm text-slate-400">Loading…</p>
   if (!profile) {
@@ -136,6 +148,22 @@ function ProfilePage() {
           </div>
         )}
       </section>
+
+      {profile.cases.length > 0 && (
+        <section>
+          <h2 className="text-base font-semibold text-slate-900">
+            All emails for this person
+          </h2>
+          <p className="mb-3 mt-0.5 text-sm text-slate-600">
+            From every case on this profile.
+          </p>
+          <EmailList
+            emails={emails}
+            showCase
+            emptyText="No emails yet. Open a case to add links and create drafts."
+          />
+        </section>
+      )}
     </div>
   )
 }

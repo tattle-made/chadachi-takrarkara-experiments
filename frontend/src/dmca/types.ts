@@ -181,6 +181,8 @@ export type EmailFilters = {
 // one review-screen row: a site and who to email about it
 export type DraftItem = {
   domain: string
+  // exactly the links this draft gets (all on this domain)
+  link_ids: string[]
   recipient_id: string
   email_type?: EmailType | null
   relation?: DomainRelation | null

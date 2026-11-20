@@ -1,19 +1,19 @@
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { ArrowLeft } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { AddLinksFlow } from "@/dmca/components/AddLinksFlow"
 import { CaseLinks } from "@/dmca/components/CaseLinks"
 import { ProfileDocsNote } from "@/dmca/components/DocumentsPanel"
+import { EmailList } from "@/dmca/components/EmailList"
 import {
   EscalationReview,
   ReviewDrafts,
   type ReviewSeed,
   seedsFromLinks,
 } from "@/dmca/components/ReviewDrafts"
-import { STATUS_LABELS } from "@/dmca/labels"
 import type { CaseDetail } from "@/dmca/types"
-import { cardClass, fieldBase, formatDate, tdClass, thClass } from "@/dmca/ui"
+import { cardClass, fieldBase, formatDate } from "@/dmca/ui"
 import { emailsQueryOptions } from "@/queries/dmca/emails.query"
 import {
   assigneesQueryOptions,
@@ -43,6 +43,12 @@ function CasePage() {
   )
   const [panel, setPanel] = useState<Panel>(null)
 
+  // Escalate from lower down this page only changes the URL, so bring the
+  // review into view
+  useEffect(() => {
+    if (escalate) window.scrollTo({ top: 0, behavior: "smooth" })
+  }, [escalate])
+
   if (isPending) return <p className="text-sm text-slate-400">Loading…</p>
   if (!caseItem) {
     return (
@@ -59,7 +65,11 @@ function CasePage() {
 
   return (
     <div className="space-y-8">
-      <CaseHeader caseItem={caseItem} emailCount={emails.length} />
+      <CaseHeader
+        caseItem={caseItem}
+        emailCount={emails.length}
+        noReplyCount={emails.filter((e) => e.no_reply_48h).length}
+      />
 
       {escalate ? (
         <section className={`${cardClass} p-6`}>
@@ -106,40 +116,12 @@ function CasePage() {
         }
       />
 
-      {/* a plain list until the real email list replaces it */}
       <section>
         <h2 className="mb-3 text-base font-semibold text-slate-900">Emails</h2>
-        {emails.length === 0 ? (
-          <p className="text-sm text-slate-400">
-            No emails yet. Add links to create drafts.
-          </p>
-        ) : (
-          <div className={`overflow-hidden ${cardClass}`}>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50">
-                  <th className={thClass}>To</th>
-                  <th className={thClass}>Status</th>
-                  <th className={thClass}>Links</th>
-                </tr>
-              </thead>
-              <tbody>
-                {emails.map((e) => (
-                  <tr
-                    key={e.id}
-                    className="border-b border-slate-100 last:border-0"
-                  >
-                    <td className={tdClass}>{e.recipient_name}</td>
-                    <td className={tdClass}>{STATUS_LABELS[e.status]}</td>
-                    <td className={`${tdClass} text-xs text-slate-500`}>
-                      {e.links.map((l) => l.url).join(", ")}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <EmailList
+          emails={emails}
+          emptyText="No emails yet. Add links to create drafts."
+        />
       </section>
     </div>
   )
@@ -149,9 +131,12 @@ function CasePage() {
 function CaseHeader({
   caseItem,
   emailCount,
+  noReplyCount,
 }: {
   caseItem: CaseDetail
   emailCount: number
+  // sent emails with no reply after 48 hours
+  noReplyCount: number
 }) {
   const { data: assignees = [] } = useQuery(assigneesQueryOptions())
   const updateCase = useUpdateCase(caseItem.id)
@@ -181,6 +166,11 @@ function CaseHeader({
             {caseItem.links.length === 1 ? "link" : "links"} · {emailCount}{" "}
             {emailCount === 1 ? "email" : "emails"} · created{" "}
             {formatDate(caseItem.created_at)}
+            {noReplyCount > 0 && (
+              <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                {noReplyCount} no reply · 48h+
+              </span>
+            )}
           </p>
           <div className="mt-2">
             <ProfileDocsNote profileId={caseItem.profile.id} />

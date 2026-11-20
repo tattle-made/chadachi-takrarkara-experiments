@@ -1,6 +1,12 @@
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal, Self
 
-from pydantic import AnyUrl, BeforeValidator, PostgresDsn, computed_field
+from pydantic import (
+    AnyUrl,
+    BeforeValidator,
+    PostgresDsn,
+    computed_field,
+    model_validator,
+)
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -58,6 +64,39 @@ class Settings(BaseSettings):
 
     OPENAI_API_KEY: str
     OPENAI_VECTOR_STORE_ID: str
+
+    # where the browser is sent back to after connecting Google
+    FRONTEND_HOST: str = "http://localhost:5173"
+
+    GOOGLE_CLIENT_ID: str
+    GOOGLE_CLIENT_SECRET: str
+    GOOGLE_REDIRECT_URI: str
+    TOKEN_ENCRYPTION_KEY: str
+    # where DMCA attachment files go: "drive" (the connected Google account), or
+    # "memory" for tests
+    STORAGE_BACKEND: Literal["drive", "memory"] = "drive"
+    # the Drive folder the app puts every file in (created if missing)
+    DRIVE_FOLDER_NAME: str = "DMCA takedowns (managed by the app, don't edit)"
+
+    # Outside production, every takedown email goes to this address instead of
+    # the real recipient (the subject shows "[TEST → real@address]")
+    EMAIL_REDIRECT_TO: str | None = None
+    # pause between two takedown emails (3s = 20 a minute), to stay well under
+    # Gmail's rate limits and not look like a burst of spam
+    SEND_GAP_SECONDS: float = 3.0
+    # run the background email queue with the app (off in tests, which have no
+    # Postgres)
+    QUEUE_ENABLED: bool = True
+
+    @model_validator(mode="after")
+    def _require_redirect_outside_production(self) -> Self:
+        """Refuse to start outside production without EMAIL_REDIRECT_TO, so a
+        dev or staging setup can never email real recipients."""
+        if self.ENVIRONMENT != "production" and not self.EMAIL_REDIRECT_TO:
+            raise ValueError(
+                "Set EMAIL_REDIRECT_TO outside production (e.g. your own address)"
+            )
+        return self
 
 
 settings = Settings()  # type: ignore

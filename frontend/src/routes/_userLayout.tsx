@@ -6,7 +6,7 @@ import {
   redirect,
   useNavigate,
 } from "@tanstack/react-router"
-import { Mail, Shield } from "lucide-react"
+import { Gavel, Mail, Shield } from "lucide-react"
 import apiClient from "@/lib/apiClient"
 import { useLogoutMutation } from "@/queries/auth.query"
 import { currentUserQueryOptions } from "@/queries/user.query"
@@ -29,6 +29,7 @@ export const Route = createFileRoute("/_userLayout")({
 
 const TOOL_LINKS = [
   { to: "/emailGeneration", label: "Write Email", icon: Mail },
+  { to: "/dmca", label: "DMCA", icon: Gavel },
 ] as const
 
 function UserLayout() {

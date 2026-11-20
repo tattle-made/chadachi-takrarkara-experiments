@@ -5,13 +5,18 @@ import { useState } from "react"
 import { ProfileFormDialog } from "@/dmca/components/ProfileFormDialog"
 import { profileName } from "@/dmca/labels"
 import { btnPrimary, cardClass, formatDate, tdClass, thClass } from "@/dmca/ui"
-import { profilesQueryOptions } from "@/queries/dmca/profiles.query"
+import {
+  casesQueryOptions,
+  profilesQueryOptions,
+} from "@/queries/dmca/profiles.query"
+import { currentUserQueryOptions } from "@/queries/user.query"
 
 export const Route = createFileRoute("/_userLayout/dmca/")({
   component: ProfilesPage,
 })
 
-/** All profiles, newest first, with a name search. */
+/** All profiles, newest first, with a name search and a "Has a case
+ * assigned to me" tick. */
 function ProfilesPage() {
   const navigate = useNavigate()
   const [query, setQuery] = useState("")
@@ -20,13 +25,32 @@ function ProfilesPage() {
     // keep showing the last results while the next search loads
     placeholderData: keepPreviousData,
   })
-  const profiles = data?.data ?? []
+  const { data: cases } = useQuery(casesQueryOptions())
+  const { data: user } = useQuery(currentUserQueryOptions())
+  const [mineOnly, setMineOnly] = useState(false)
+
+  const mine = new Set(
+    cases?.data
+      .filter((c) => c.assignee?.id === user?.id)
+      .map((c) => c.profile.id),
+  )
+  const profiles = (data?.data ?? []).filter((p) => !mineOnly || mine.has(p.id))
 
   return (
     <section>
       <div className="mb-4 flex items-center justify-between gap-4">
         <h1 className="text-xl font-semibold text-slate-900">Profiles</h1>
         <div className="flex items-center gap-3">
+          <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={mineOnly}
+              onChange={(e) => {
+                setMineOnly(e.target.checked)
+              }}
+            />
+            Has a case assigned to me
+          </label>
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
             <input
@@ -58,7 +82,11 @@ function ProfilesPage() {
         <p className="text-sm text-red-600">Couldn't load profiles.</p>
       ) : profiles.length === 0 ? (
         <p className="text-sm text-slate-400">
-          {query.trim() ? "No profiles match." : "No profiles yet."}
+          {mineOnly
+            ? "No profiles with a case assigned to you."
+            : query.trim()
+              ? "No profiles match."
+              : "No profiles yet."}
         </p>
       ) : (
         <div className={`overflow-hidden ${cardClass}`}>

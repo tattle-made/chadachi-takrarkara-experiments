@@ -7,6 +7,7 @@ import type { ProfileSummary, TakedownEmail } from "@/dmca/types"
 import { fieldBase } from "@/dmca/ui"
 import { emailsQueryOptions } from "@/queries/dmca/emails.query"
 import { casesQueryOptions } from "@/queries/dmca/profiles.query"
+import { currentUserQueryOptions } from "@/queries/user.query"
 
 export const Route = createFileRoute("/_userLayout/dmca/outbox")({
   component: OutboxPage,
@@ -30,30 +31,36 @@ const FILTERS: {
   { value: "no_reply", label: "No reply · 48h+", match: (e) => e.no_reply_48h },
 ]
 
-/** Every takedown email across all cases, with status tabs and a
- * filter by person. */
+/** Every takedown email across all cases, with status tabs, a filter by
+ * person and a "From cases assigned to me" tick. */
 function OutboxPage() {
   const { data: allEmails = [], isPending } = useQuery(emailsQueryOptions())
   const { data: cases } = useQuery(casesQueryOptions())
+  const { data: user } = useQuery(currentUserQueryOptions())
   const [filter, setFilter] = useState("all")
   const [personId, setPersonId] = useState("")
+  const [mineOnly, setMineOnly] = useState(false)
   const active = FILTERS.find((f) => f.value === filter) ?? FILTERS[0]
 
-  // whose email each one is, through its case
-  const personOf = (email: TakedownEmail) =>
-    cases?.data.find((c) => c.id === email.case_id)?.profile
+  // the person and assignee of each email come from its case
+  const caseOf = (email: TakedownEmail) =>
+    cases?.data.find((c) => c.id === email.case_id)
+  const personOf = (email: TakedownEmail) => caseOf(email)?.profile
+  const mineEmails = mineOnly
+    ? allEmails.filter((e) => caseOf(e)?.assignee?.id === user?.id)
+    : allEmails
   // everyone with at least one email, by name
   const people = [
     ...new Map(
-      allEmails
+      mineEmails
         .map(personOf)
         .filter((p): p is ProfileSummary => !!p)
         .map((p) => [p.id, p]),
     ).values(),
   ].sort((a, b) => profileName(a).localeCompare(profileName(b)))
   const emails = personId
-    ? allEmails.filter((e) => personOf(e)?.id === personId)
-    : allEmails
+    ? mineEmails.filter((e) => personOf(e)?.id === personId)
+    : mineEmails
 
   return (
     <section className="space-y-4">
@@ -84,19 +91,33 @@ function OutboxPage() {
             </button>
           ))}
         </div>
-        <select
-          value={personId}
-          onChange={(e) => setPersonId(e.target.value)}
-          aria-label="Filter by person"
-          className={fieldBase}
-        >
-          <option value="">Everyone</option>
-          {people.map((p) => (
-            <option key={p.id} value={p.id}>
-              {profileName(p)}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-4">
+          <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={mineOnly}
+              onChange={(e) => {
+                setMineOnly(e.target.checked)
+                // the picked person may not be in the shorter list
+                setPersonId("")
+              }}
+            />
+            From cases assigned to me
+          </label>
+          <select
+            value={personId}
+            onChange={(e) => setPersonId(e.target.value)}
+            aria-label="Filter by person"
+            className={fieldBase}
+          >
+            <option value="">Everyone</option>
+            {people.map((p) => (
+              <option key={p.id} value={p.id}>
+                {profileName(p)}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {isPending ? (

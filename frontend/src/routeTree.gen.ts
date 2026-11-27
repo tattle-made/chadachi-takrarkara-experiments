@@ -13,7 +13,14 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as UserLayoutRouteImport } from './routes/_userLayout'
 import { Route as UserLayoutIndexRouteImport } from './routes/_userLayout/index'
 import { Route as UserLayoutEmailGenerationRouteImport } from './routes/_userLayout/emailGeneration'
+import { Route as UserLayoutDmcaRouteRouteImport } from './routes/_userLayout/dmca/route'
+import { Route as UserLayoutDmcaIndexRouteImport } from './routes/_userLayout/dmca/index'
 import { Route as UserLayoutAdminIndexRouteImport } from './routes/_userLayout/admin/index'
+import { Route as UserLayoutDmcaOutboxRouteImport } from './routes/_userLayout/dmca/outbox'
+import { Route as UserLayoutDmcaConfigRouteImport } from './routes/_userLayout/dmca/config'
+import { Route as UserLayoutDmcaProfilesProfileIdRouteImport } from './routes/_userLayout/dmca/profiles.$profileId'
+import { Route as UserLayoutDmcaCasesNewRouteImport } from './routes/_userLayout/dmca/cases.new'
+import { Route as UserLayoutDmcaCasesCaseIdRouteImport } from './routes/_userLayout/dmca/cases.$caseId'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -35,44 +42,129 @@ const UserLayoutEmailGenerationRoute =
     path: '/emailGeneration',
     getParentRoute: () => UserLayoutRoute,
   } as any)
+const UserLayoutDmcaRouteRoute = UserLayoutDmcaRouteRouteImport.update({
+  id: '/dmca',
+  path: '/dmca',
+  getParentRoute: () => UserLayoutRoute,
+} as any)
+const UserLayoutDmcaIndexRoute = UserLayoutDmcaIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => UserLayoutDmcaRouteRoute,
+} as any)
 const UserLayoutAdminIndexRoute = UserLayoutAdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
   getParentRoute: () => UserLayoutRoute,
 } as any)
+const UserLayoutDmcaOutboxRoute = UserLayoutDmcaOutboxRouteImport.update({
+  id: '/outbox',
+  path: '/outbox',
+  getParentRoute: () => UserLayoutDmcaRouteRoute,
+} as any)
+const UserLayoutDmcaConfigRoute = UserLayoutDmcaConfigRouteImport.update({
+  id: '/config',
+  path: '/config',
+  getParentRoute: () => UserLayoutDmcaRouteRoute,
+} as any)
+const UserLayoutDmcaProfilesProfileIdRoute =
+  UserLayoutDmcaProfilesProfileIdRouteImport.update({
+    id: '/profiles/$profileId',
+    path: '/profiles/$profileId',
+    getParentRoute: () => UserLayoutDmcaRouteRoute,
+  } as any)
+const UserLayoutDmcaCasesNewRoute = UserLayoutDmcaCasesNewRouteImport.update({
+  id: '/cases/new',
+  path: '/cases/new',
+  getParentRoute: () => UserLayoutDmcaRouteRoute,
+} as any)
+const UserLayoutDmcaCasesCaseIdRoute =
+  UserLayoutDmcaCasesCaseIdRouteImport.update({
+    id: '/cases/$caseId',
+    path: '/cases/$caseId',
+    getParentRoute: () => UserLayoutDmcaRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof UserLayoutIndexRoute
   '/login': typeof LoginRoute
+  '/dmca': typeof UserLayoutDmcaRouteRouteWithChildren
   '/emailGeneration': typeof UserLayoutEmailGenerationRoute
+  '/dmca/config': typeof UserLayoutDmcaConfigRoute
+  '/dmca/outbox': typeof UserLayoutDmcaOutboxRoute
   '/admin/': typeof UserLayoutAdminIndexRoute
+  '/dmca/': typeof UserLayoutDmcaIndexRoute
+  '/dmca/cases/$caseId': typeof UserLayoutDmcaCasesCaseIdRoute
+  '/dmca/cases/new': typeof UserLayoutDmcaCasesNewRoute
+  '/dmca/profiles/$profileId': typeof UserLayoutDmcaProfilesProfileIdRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/emailGeneration': typeof UserLayoutEmailGenerationRoute
   '/': typeof UserLayoutIndexRoute
+  '/dmca/config': typeof UserLayoutDmcaConfigRoute
+  '/dmca/outbox': typeof UserLayoutDmcaOutboxRoute
   '/admin': typeof UserLayoutAdminIndexRoute
+  '/dmca': typeof UserLayoutDmcaIndexRoute
+  '/dmca/cases/$caseId': typeof UserLayoutDmcaCasesCaseIdRoute
+  '/dmca/cases/new': typeof UserLayoutDmcaCasesNewRoute
+  '/dmca/profiles/$profileId': typeof UserLayoutDmcaProfilesProfileIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_userLayout': typeof UserLayoutRouteWithChildren
   '/login': typeof LoginRoute
+  '/_userLayout/dmca': typeof UserLayoutDmcaRouteRouteWithChildren
   '/_userLayout/emailGeneration': typeof UserLayoutEmailGenerationRoute
   '/_userLayout/': typeof UserLayoutIndexRoute
+  '/_userLayout/dmca/config': typeof UserLayoutDmcaConfigRoute
+  '/_userLayout/dmca/outbox': typeof UserLayoutDmcaOutboxRoute
   '/_userLayout/admin/': typeof UserLayoutAdminIndexRoute
+  '/_userLayout/dmca/': typeof UserLayoutDmcaIndexRoute
+  '/_userLayout/dmca/cases/$caseId': typeof UserLayoutDmcaCasesCaseIdRoute
+  '/_userLayout/dmca/cases/new': typeof UserLayoutDmcaCasesNewRoute
+  '/_userLayout/dmca/profiles/$profileId': typeof UserLayoutDmcaProfilesProfileIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/emailGeneration' | '/admin/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/dmca'
+    | '/emailGeneration'
+    | '/dmca/config'
+    | '/dmca/outbox'
+    | '/admin/'
+    | '/dmca/'
+    | '/dmca/cases/$caseId'
+    | '/dmca/cases/new'
+    | '/dmca/profiles/$profileId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/emailGeneration' | '/' | '/admin'
+  to:
+    | '/login'
+    | '/emailGeneration'
+    | '/'
+    | '/dmca/config'
+    | '/dmca/outbox'
+    | '/admin'
+    | '/dmca'
+    | '/dmca/cases/$caseId'
+    | '/dmca/cases/new'
+    | '/dmca/profiles/$profileId'
   id:
     | '__root__'
     | '/_userLayout'
     | '/login'
+    | '/_userLayout/dmca'
     | '/_userLayout/emailGeneration'
     | '/_userLayout/'
+    | '/_userLayout/dmca/config'
+    | '/_userLayout/dmca/outbox'
     | '/_userLayout/admin/'
+    | '/_userLayout/dmca/'
+    | '/_userLayout/dmca/cases/$caseId'
+    | '/_userLayout/dmca/cases/new'
+    | '/_userLayout/dmca/profiles/$profileId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -110,6 +202,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UserLayoutEmailGenerationRouteImport
       parentRoute: typeof UserLayoutRoute
     }
+    '/_userLayout/dmca': {
+      id: '/_userLayout/dmca'
+      path: '/dmca'
+      fullPath: '/dmca'
+      preLoaderRoute: typeof UserLayoutDmcaRouteRouteImport
+      parentRoute: typeof UserLayoutRoute
+    }
+    '/_userLayout/dmca/': {
+      id: '/_userLayout/dmca/'
+      path: '/'
+      fullPath: '/dmca/'
+      preLoaderRoute: typeof UserLayoutDmcaIndexRouteImport
+      parentRoute: typeof UserLayoutDmcaRouteRoute
+    }
     '/_userLayout/admin/': {
       id: '/_userLayout/admin/'
       path: '/admin'
@@ -117,16 +223,74 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UserLayoutAdminIndexRouteImport
       parentRoute: typeof UserLayoutRoute
     }
+    '/_userLayout/dmca/outbox': {
+      id: '/_userLayout/dmca/outbox'
+      path: '/outbox'
+      fullPath: '/dmca/outbox'
+      preLoaderRoute: typeof UserLayoutDmcaOutboxRouteImport
+      parentRoute: typeof UserLayoutDmcaRouteRoute
+    }
+    '/_userLayout/dmca/config': {
+      id: '/_userLayout/dmca/config'
+      path: '/config'
+      fullPath: '/dmca/config'
+      preLoaderRoute: typeof UserLayoutDmcaConfigRouteImport
+      parentRoute: typeof UserLayoutDmcaRouteRoute
+    }
+    '/_userLayout/dmca/profiles/$profileId': {
+      id: '/_userLayout/dmca/profiles/$profileId'
+      path: '/profiles/$profileId'
+      fullPath: '/dmca/profiles/$profileId'
+      preLoaderRoute: typeof UserLayoutDmcaProfilesProfileIdRouteImport
+      parentRoute: typeof UserLayoutDmcaRouteRoute
+    }
+    '/_userLayout/dmca/cases/new': {
+      id: '/_userLayout/dmca/cases/new'
+      path: '/cases/new'
+      fullPath: '/dmca/cases/new'
+      preLoaderRoute: typeof UserLayoutDmcaCasesNewRouteImport
+      parentRoute: typeof UserLayoutDmcaRouteRoute
+    }
+    '/_userLayout/dmca/cases/$caseId': {
+      id: '/_userLayout/dmca/cases/$caseId'
+      path: '/cases/$caseId'
+      fullPath: '/dmca/cases/$caseId'
+      preLoaderRoute: typeof UserLayoutDmcaCasesCaseIdRouteImport
+      parentRoute: typeof UserLayoutDmcaRouteRoute
+    }
   }
 }
 
+interface UserLayoutDmcaRouteRouteChildren {
+  UserLayoutDmcaConfigRoute: typeof UserLayoutDmcaConfigRoute
+  UserLayoutDmcaOutboxRoute: typeof UserLayoutDmcaOutboxRoute
+  UserLayoutDmcaIndexRoute: typeof UserLayoutDmcaIndexRoute
+  UserLayoutDmcaCasesCaseIdRoute: typeof UserLayoutDmcaCasesCaseIdRoute
+  UserLayoutDmcaCasesNewRoute: typeof UserLayoutDmcaCasesNewRoute
+  UserLayoutDmcaProfilesProfileIdRoute: typeof UserLayoutDmcaProfilesProfileIdRoute
+}
+
+const UserLayoutDmcaRouteRouteChildren: UserLayoutDmcaRouteRouteChildren = {
+  UserLayoutDmcaConfigRoute: UserLayoutDmcaConfigRoute,
+  UserLayoutDmcaOutboxRoute: UserLayoutDmcaOutboxRoute,
+  UserLayoutDmcaIndexRoute: UserLayoutDmcaIndexRoute,
+  UserLayoutDmcaCasesCaseIdRoute: UserLayoutDmcaCasesCaseIdRoute,
+  UserLayoutDmcaCasesNewRoute: UserLayoutDmcaCasesNewRoute,
+  UserLayoutDmcaProfilesProfileIdRoute: UserLayoutDmcaProfilesProfileIdRoute,
+}
+
+const UserLayoutDmcaRouteRouteWithChildren =
+  UserLayoutDmcaRouteRoute._addFileChildren(UserLayoutDmcaRouteRouteChildren)
+
 interface UserLayoutRouteChildren {
+  UserLayoutDmcaRouteRoute: typeof UserLayoutDmcaRouteRouteWithChildren
   UserLayoutEmailGenerationRoute: typeof UserLayoutEmailGenerationRoute
   UserLayoutIndexRoute: typeof UserLayoutIndexRoute
   UserLayoutAdminIndexRoute: typeof UserLayoutAdminIndexRoute
 }
 
 const UserLayoutRouteChildren: UserLayoutRouteChildren = {
+  UserLayoutDmcaRouteRoute: UserLayoutDmcaRouteRouteWithChildren,
   UserLayoutEmailGenerationRoute: UserLayoutEmailGenerationRoute,
   UserLayoutIndexRoute: UserLayoutIndexRoute,
   UserLayoutAdminIndexRoute: UserLayoutAdminIndexRoute,

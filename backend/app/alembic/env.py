@@ -33,6 +33,12 @@ def get_url():
     return str(settings.SQLALCHEMY_DATABASE_URI)
 
 
+def include_object(object, name, type_, reflected, compare_to):
+    """Leave the job queue's tables (oban_*) out of autogenerate. They come
+    from the oban library, not our models, so they'd show up as "to drop"."""
+    return not (type_ == "table" and name.startswith("oban_"))
+
+
 def run_migrations_offline():
     """Run migrations in 'offline' mode.
 
@@ -47,7 +53,11 @@ def run_migrations_offline():
     """
     url = get_url()
     context.configure(
-        url=url, target_metadata=target_metadata, literal_binds=True, compare_type=True
+        url=url,
+        target_metadata=target_metadata,
+        literal_binds=True,
+        compare_type=True,
+        include_object=include_object,
     )
 
     with context.begin_transaction():
@@ -72,7 +82,10 @@ def run_migrations_online():
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata, compare_type=True
+            connection=connection,
+            target_metadata=target_metadata,
+            compare_type=True,
+            include_object=include_object,
         )
 
         with context.begin_transaction():

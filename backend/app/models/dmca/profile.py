@@ -44,6 +44,8 @@ class ProfileBase(SQLModel):
 
 
 class Profile(ProfileBase, table=True):
+    __tablename__ = "dmca_profile"
+
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     # users are archived, never deleted, so a plain FK is enough here
     created_by: int = Field(foreign_key="user.id", index=True)

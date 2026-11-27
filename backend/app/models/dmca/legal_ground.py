@@ -32,7 +32,7 @@ class LegalGroundBase(SQLModel):
 
 
 class LegalGround(LegalGroundBase, table=True):
-    __tablename__ = "legal_ground"
+    __tablename__ = "dmca_legal_ground"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     created_at: datetime = Field(

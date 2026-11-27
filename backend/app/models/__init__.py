@@ -20,8 +20,8 @@ from app.models.dmca import (  # noqa: F401
     RecipientEmail,
     TakedownEmail,
     TakedownEmailAttachmentJoin,
-    TakedownEmailLegalGround,
-    TakedownEmailLink,
+    TakedownEmailLegalGroundJoin,
+    TakedownEmailLinkJoin,
 )
 from app.models.enums import (  # noqa: F401
     AnnotationTag,

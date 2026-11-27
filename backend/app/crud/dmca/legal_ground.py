@@ -14,7 +14,7 @@ from app.models.dmca.legal_ground import (
     LegalGroundCreate,
     LegalGroundUpdate,
 )
-from app.models.dmca.takedown_email import TakedownEmailLegalGround
+from app.models.dmca.takedown_email import TakedownEmailLegalGroundJoin
 
 
 def create_legal_ground(
@@ -65,8 +65,8 @@ def update_legal_ground(
 def is_legal_ground_used(*, session: Session, legal_ground_id: uuid.UUID) -> bool:
     """Whether any email (draft or sent) uses this ground; then it can't be deleted."""
     # one row in the link table is enough, so stop at the first
-    query = select(TakedownEmailLegalGround).where(
-        TakedownEmailLegalGround.legal_ground_id == legal_ground_id
+    query = select(TakedownEmailLegalGroundJoin).where(
+        TakedownEmailLegalGroundJoin.legal_ground_id == legal_ground_id
     )
     return session.exec(query).first() is not None
 

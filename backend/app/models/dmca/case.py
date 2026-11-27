@@ -25,13 +25,13 @@ class CaseBase(SQLModel):
 
 
 class Case(CaseBase, table=True):
-    # "case" is a reserved word in SQL, so the table gets a clearer name
-    __tablename__ = "takedown_case"
+    # "case" alone is a reserved word in SQL; with the prefix it is fine
+    __tablename__ = "dmca_case"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     # CASCADE: deleting a profile deletes its cases (and their links)
     profile_id: uuid.UUID = Field(
-        foreign_key="profile.id", ondelete="CASCADE", index=True
+        foreign_key="dmca_profile.id", ondelete="CASCADE", index=True
     )
     # SET NULL: if the user row ever goes, the case just becomes unassigned
     assigned_to: int | None = Field(
@@ -57,13 +57,15 @@ class Case(CaseBase, table=True):
 
 
 class CaseLink(SQLModel, table=True):
-    __tablename__ = "case_link"
+    __tablename__ = "dmca_case_link"
     # the same URL pasted twice into one case is skipped, not stored twice
-    __table_args__ = (UniqueConstraint("case_id", "url", name="uq_case_link_case_url"),)
+    __table_args__ = (
+        UniqueConstraint("case_id", "url", name="uq_dmca_case_link_case_url"),
+    )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     case_id: uuid.UUID = Field(
-        foreign_key="takedown_case.id", ondelete="CASCADE", index=True
+        foreign_key="dmca_case.id", ondelete="CASCADE", index=True
     )
     url: str = Field(max_length=2048)
     # e.g. "example-site.com", from utils/links.extract_domain

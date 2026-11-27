@@ -5,9 +5,9 @@ while they're drafts, then sent by the background sender. After sending nothing 
 final text is frozen in sent_body, which is the record of what went out.
 
 Three link tables connect an email to:
-- the case links it covers (takedown_email_link)
-- the legal grounds it cites (takedown_email_legal_ground)
-- the profile documents sent with it (takedown_email_attachment_join)
+- the case links it covers (dmca_email_link_join)
+- the legal grounds it cites (dmca_email_legal_ground_join)
+- the profile documents sent with it (dmca_email_attachment_join)
 RESTRICT on the last two means the DB refuses to delete a ground or a document
 that an email uses.
 
@@ -33,38 +33,38 @@ from app.models.dmca.legal_ground import LegalGround, LegalGroundPublic
 # (email_id, link_id) pairs. Same for legal grounds.
 
 
-class TakedownEmailLink(SQLModel, table=True):
-    __tablename__ = "takedown_email_link"
+class TakedownEmailLinkJoin(SQLModel, table=True):
+    __tablename__ = "dmca_email_link_join"
 
     # both columns together are the primary key: each pair only once
     email_id: uuid.UUID = Field(
-        foreign_key="takedown_email.id", ondelete="CASCADE", primary_key=True
+        foreign_key="dmca_email.id", ondelete="CASCADE", primary_key=True
     )
     link_id: uuid.UUID = Field(
-        foreign_key="case_link.id", ondelete="CASCADE", primary_key=True
+        foreign_key="dmca_case_link.id", ondelete="CASCADE", primary_key=True
     )
 
 
-class TakedownEmailLegalGround(SQLModel, table=True):
-    __tablename__ = "takedown_email_legal_ground"
+class TakedownEmailLegalGroundJoin(SQLModel, table=True):
+    __tablename__ = "dmca_email_legal_ground_join"
 
     email_id: uuid.UUID = Field(
-        foreign_key="takedown_email.id", ondelete="CASCADE", primary_key=True
+        foreign_key="dmca_email.id", ondelete="CASCADE", primary_key=True
     )
     # RESTRICT: a ground that an email uses can't be deleted (turn it off instead)
     legal_ground_id: uuid.UUID = Field(
-        foreign_key="legal_ground.id", ondelete="RESTRICT", primary_key=True
+        foreign_key="dmca_legal_ground.id", ondelete="RESTRICT", primary_key=True
     )
 
 
 class TakedownEmailAttachmentJoin(SQLModel, table=True):
-    __tablename__ = "takedown_email_attachment_join"
+    __tablename__ = "dmca_email_attachment_join"
 
     email_id: uuid.UUID = Field(
-        foreign_key="takedown_email.id", ondelete="CASCADE", primary_key=True
+        foreign_key="dmca_email.id", ondelete="CASCADE", primary_key=True
     )
     attachment_id: uuid.UUID = Field(
-        foreign_key="attachment.id", ondelete="RESTRICT", primary_key=True
+        foreign_key="dmca_attachment.id", ondelete="RESTRICT", primary_key=True
     )
 
 
@@ -72,16 +72,16 @@ class TakedownEmailAttachmentJoin(SQLModel, table=True):
 
 
 class TakedownEmail(SQLModel, table=True):
-    __tablename__ = "takedown_email"
+    __tablename__ = "dmca_email"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     case_id: uuid.UUID = Field(
-        foreign_key="takedown_case.id", ondelete="CASCADE", index=True
+        foreign_key="dmca_case.id", ondelete="CASCADE", index=True
     )
 
     # who it goes to. Becomes None if the recipient is deleted in Config
     recipient_id: uuid.UUID | None = Field(
-        default=None, foreign_key="recipient.id", ondelete="SET NULL", index=True
+        default=None, foreign_key="dmca_recipient.id", ondelete="SET NULL", index=True
     )
     # a copy of the recipient's name, so it's still here if the recipient is deleted
     recipient_name: str = Field(max_length=255)
@@ -89,7 +89,8 @@ class TakedownEmail(SQLModel, table=True):
     # next one. None for a recipient picked by hand
     relation: DomainRelation | None = None
     # which of the recipient's addresses it uses (the review screen's dropdown).
-    # None if the recipient has no address yet; to_address is then filled by hand
+    # to_address is always one of the recipient's addresses. Both are None if the
+    # recipient has no address yet: an admin adds one, then it's picked on the draft
     email_type: EmailType | None = None
     to_address: str | None = Field(default=None, max_length=255)
 
@@ -126,8 +127,10 @@ class TakedownEmail(SQLModel, table=True):
     case: Case = Relationship()
     # link_model= tells SQLModel to go through the link table. email.links is a
     # plain list of CaseLink; assigning a new list updates the link table
-    links: list[CaseLink] = Relationship(link_model=TakedownEmailLink)
-    legal_grounds: list[LegalGround] = Relationship(link_model=TakedownEmailLegalGround)
+    links: list[CaseLink] = Relationship(link_model=TakedownEmailLinkJoin)
+    legal_grounds: list[LegalGround] = Relationship(
+        link_model=TakedownEmailLegalGroundJoin
+    )
     attachments: list[Attachment] = Relationship(link_model=TakedownEmailAttachmentJoin)
 
 

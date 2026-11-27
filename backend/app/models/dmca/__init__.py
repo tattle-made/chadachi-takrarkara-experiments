@@ -75,8 +75,8 @@ from app.models.dmca.takedown_email import (  # noqa: F401
     DraftsResult,
     TakedownEmail,
     TakedownEmailAttachmentJoin,
-    TakedownEmailLegalGround,
-    TakedownEmailLink,
+    TakedownEmailLegalGroundJoin,
+    TakedownEmailLinkJoin,
     TakedownEmailPublic,
     TakedownEmailUpdate,
 )

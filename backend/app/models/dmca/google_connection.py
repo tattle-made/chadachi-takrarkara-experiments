@@ -14,7 +14,7 @@ from app.models.dmca.enums import GoogleConnectionStatus
 
 
 class GoogleConnection(SQLModel, table=True):
-    __tablename__ = "google_connection"
+    __tablename__ = "dmca_google_connection"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     account_email: str = Field(max_length=255)

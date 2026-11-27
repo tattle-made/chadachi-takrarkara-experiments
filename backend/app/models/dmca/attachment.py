@@ -20,9 +20,11 @@ MAX_ATTACHMENT_BYTES = MAX_ATTACHMENT_MB * 1024 * 1024
 
 
 class Attachment(SQLModel, table=True):
+    __tablename__ = "dmca_attachment"
+
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     profile_id: uuid.UUID = Field(
-        foreign_key="profile.id", ondelete="CASCADE", index=True
+        foreign_key="dmca_profile.id", ondelete="CASCADE", index=True
     )
     kind: AttachmentKind
     file_name: str = Field(max_length=255)

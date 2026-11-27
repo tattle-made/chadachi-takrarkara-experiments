@@ -19,10 +19,10 @@ depends_on = None
 
 def upgrade():
     op.add_column(
-        "takedown_email",
+        "dmca_email",
         sa.Column("reply_received_at", sa.DateTime(timezone=True), nullable=True),
     )
 
 
 def downgrade():
-    op.drop_column("takedown_email", "reply_received_at")
+    op.drop_column("dmca_email", "reply_received_at")

@@ -29,6 +29,8 @@ class RecipientBase(SQLModel):
 
 
 class Recipient(RecipientBase, table=True):
+    __tablename__ = "dmca_recipient"
+
     # default_factory runs when the object is created in Python, so the id exists
     # before the row is committed
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
@@ -68,13 +70,13 @@ class RecipientEmailBase(SQLModel):
 
 
 class RecipientEmail(RecipientEmailBase, table=True):
-    __tablename__ = "recipient_email"
+    __tablename__ = "dmca_recipient_email"
     # one address can serve several types (e.g. the same inbox for DMCA and abuse),
     # but an address + type belongs to only one recipient. The unique index is on
     # lower(address), so the DB also catches case variants inserted directly.
     __table_args__ = (
         sa.Index(
-            "uq_recipient_email_lower_address_type",
+            "uq_dmca_recipient_email_lower_address_type",
             sa.text("lower(address)"),
             "email_type",
             unique=True,
@@ -85,7 +87,7 @@ class RecipientEmail(RecipientEmailBase, table=True):
     # set from the URL (/recipients/{id}/emails), so it's not in the Base.
     # ondelete="CASCADE" makes the DB itself delete emails of a deleted recipient
     recipient_id: uuid.UUID = Field(
-        foreign_key="recipient.id", ondelete="CASCADE", index=True
+        foreign_key="dmca_recipient.id", ondelete="CASCADE", index=True
     )
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
@@ -110,9 +112,11 @@ class DomainBase(SQLModel):
 
 
 class Domain(DomainBase, table=True):
+    __tablename__ = "dmca_domain"
+
     # one row per site, shared by every recipient linked to it
     __table_args__ = (
-        sa.Index("uq_domain_lower_domain", sa.text("lower(domain)"), unique=True),
+        sa.Index("uq_dmca_domain_lower_domain", sa.text("lower(domain)"), unique=True),
     )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
@@ -133,7 +137,7 @@ class Domain(DomainBase, table=True):
 class DomainRecipient(SQLModel, table=True):
     """How a recipient relates to a domain, e.g. Cloudflare is the cdn for example-site.com."""
 
-    __tablename__ = "domain_recipient"
+    __tablename__ = "dmca_domain_recipient"
     # the same recipient can have several relations for one domain (e.g. host and
     # cdn), but each relation only once
     __table_args__ = (
@@ -141,16 +145,16 @@ class DomainRecipient(SQLModel, table=True):
             "domain_id",
             "recipient_id",
             "relation",
-            name="uq_domain_recipient_domain_recipient_relation",
+            name="uq_dmca_domain_recipient_domain_recipient_relation",
         ),
     )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     domain_id: uuid.UUID = Field(
-        foreign_key="domain.id", ondelete="CASCADE", index=True
+        foreign_key="dmca_domain.id", ondelete="CASCADE", index=True
     )
     recipient_id: uuid.UUID = Field(
-        foreign_key="recipient.id", ondelete="CASCADE", index=True
+        foreign_key="dmca_recipient.id", ondelete="CASCADE", index=True
     )
     relation: DomainRelation
     created_at: datetime = Field(

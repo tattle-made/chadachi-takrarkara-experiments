@@ -345,15 +345,17 @@ def test_edit_subject_address_and_body(client, member, draft):
         client,
         member,
         draft["id"],
-        {"subject": "New", "to_address": "x@cf.test", "custom_body": "Hello"},
+        {"subject": "New", "to_address": "abuse@cf.test", "custom_body": "Hello"},
     )
     assert response.status_code == 200
     body = response.json()
     assert (body["subject"], body["to_address"], body["body"]) == (
         "New",
-        "x@cf.test",
+        "abuse@cf.test",
         "Hello",
     )
+    # the address's type comes with it
+    assert body["email_type"] == "abuse"
     assert body["is_body_custom"] is True
 
     # null goes back to the generated body
@@ -361,6 +363,25 @@ def test_edit_subject_address_and_body(client, member, draft):
     assert reset["is_body_custom"] is False
     assert reset["body"].startswith("Hi,")
     assert reset["subject"] == "New"
+
+
+def test_to_address_must_be_the_recipients(client, member, draft):
+    # another organisation's address, or a made-up one, is refused
+    for address in ["hello@host.test", "someone@else.test"]:
+        response = patch(client, member, draft["id"], {"to_address": address})
+        assert response.status_code == 400
+        assert "isn't one of Cloudflare's addresses" in response.json()["detail"]
+
+    # a saved address matches whatever its letter case
+    ok = patch(client, member, draft["id"], {"to_address": "ABUSE@cf.test"}).json()
+    assert (ok["to_address"], ok["email_type"]) == ("abuse@cf.test", "abuse")
+
+
+def test_to_address_refused_once_recipient_deleted(client, admin, member, setup, draft):
+    client.delete(f"{BASE}/recipients/{setup['cf']}", headers=admin)
+    response = patch(client, member, draft["id"], {"to_address": "dmca@cf.test"})
+    assert response.status_code == 400
+    assert "deleted" in response.json()["detail"]
 
 
 def test_unchanged_body_sent_back_stays_generated(client, member, setup, draft):

@@ -20,7 +20,7 @@ from app.models.dmca.case import Case, CaseLink, CaseLinkPublic
 from app.models.dmca.enums import DomainRelation, EmailStatus, EmailType
 from app.crud.dmca.recipient import resolve_domains
 from app.models.dmca.legal_ground import LegalGround, LegalGroundPublic
-from app.models.dmca.recipient import Recipient
+from app.models.dmca.recipient import Recipient, RecipientEmail
 from app.models.dmca.takedown_email import (
     DraftItem,
     EscalationSuggestion,
@@ -367,6 +367,31 @@ def to_public(email: TakedownEmail) -> TakedownEmailPublic:
 # --- editing ---
 
 
+def _recipient_address(
+    *, session: Session, email: TakedownEmail, address: str
+) -> RecipientEmail:
+    """The recipient's saved address matching `address`.
+
+    The To address has to be one of the recipient's addresses in Config, so an
+    email never says it went to one organisation while going somewhere else.
+    """
+    recipient = (
+        session.get(Recipient, email.recipient_id) if email.recipient_id else None
+    )
+    if recipient is None:
+        raise DraftError("This email's recipient was deleted in Config")
+    wanted = address.strip().lower()
+    matches = sorted(
+        (e for e in recipient.emails if e.address.lower() == wanted),
+        key=lambda e: e.created_at,
+    )
+    if not matches:
+        raise DraftError(f"{address} isn't one of {recipient.name}'s addresses")
+    # one address can be saved under several types: keep the email's type if
+    # it's one of them
+    return next((e for e in matches if e.email_type == email.email_type), matches[0])
+
+
 def update_takedown_email(
     *, session: Session, db_email: TakedownEmail, email_in: TakedownEmailUpdate
 ) -> TakedownEmail:
@@ -415,6 +440,14 @@ def update_takedown_email(
                 f"The documents add up to over {MAX_ATTACHMENT_MB} MB, too big for Gmail"
             )
         db_email.attachments = attachments
+
+    # the address picked must be the recipient's; its type comes with it
+    if update_data.get("to_address") is not None:
+        picked = _recipient_address(
+            session=session, email=db_email, address=update_data["to_address"]
+        )
+        update_data["to_address"] = picked.address
+        update_data["email_type"] = picked.email_type
 
     # a body that matches the template (e.g. sent back untouched) isn't an edit,
     # so keep it generated. Checked after the links/grounds above are applied
